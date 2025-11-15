@@ -1,649 +1,921 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bebek Manyun vs Zombi — Fix Audio & Controls</title>
-  <style>
-    :root{--bg:#98d6ff;--ground:#6b8f2f;--ui:#0f172a}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg)}
-    body{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:12px 8px 24px;}
-    /* Wrapper: gunakan aspect-ratio agar tinggi proporsional pada HP */
-    #gameWrap{
-      width:95vw;                /* responsive untuk HP (95% lebar layar) */
-      max-width:900px;
-      aspect-ratio: 3 / 2;       /* 900x600 = 3:2 */
-      box-shadow:0 10px 30px rgba(0,0,0,0.25);
-      border-radius:12px;
-      overflow:hidden;
-      background:white;
-      position:relative;
-      box-sizing:border-box;
-      margin-bottom:12px;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🦆 Bebek Manyun vs Zombi 🧟</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
 
-    /* Canvas responsive: penuhi area wrapper */
-    canvas{
-      display:block;
-      width:100%;
-      height:100%;
-      background:linear-gradient(#cfefff, #eaf9ff);
-    }
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            overflow: hidden;
+        }
 
-    .hud{
-      position:absolute; left:12px; top:12px;
-      color:var(--ui); font-weight:700; z-index:60;
-    }
-    .hud .score{font-size:20px}
-    .hud .hp{margin-top:6px;font-size:14px}
-    .hud .wave{margin-top:4px;font-size:12px;color:#475569}
+        #gameWrapper {
+            width: 100%;
+            max-width: 1200px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
 
-    .controls{position:absolute; right:12px; top:12px; text-align:right; z-index:50}
-    .controls small{display:block;color:#334155;font-size:11px}
-    .centerOverlay{
-      position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-      flex-direction:column; gap:10px; background:rgba(15,23,42,0.85); backdrop-filter:blur(4px); z-index:100;
-    }
-    .centerOverlay h1{color:#fff;margin:0;font-size:28px}
-    .centerOverlay p{color:#cbd5e1;margin:0;text-align:center;max-width:420px;line-height:1.5}
-    .btn{background:#0f172a;color:white;padding:12px 24px;border-radius:10px;border:none;font-weight:700;cursor:pointer;font-size:16px}
-    /* Touch controls moved BELOW the game (not inside wrapper) */
-    #touchArea{ width:95vw; max-width:900px; display:flex; justify-content:center; gap:12px; align-items:flex-end; margin-top:6px; }
-    .touch-controls{
-      display:flex; gap:10px; align-items:center; justify-content:center;
-      padding:8px 6px; background:transparent;
-    }
-    .touch-button{
-      width:72px;height:72px;border-radius:12px;background:rgba(0,0,0,0.18);
-      display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;user-select:none;
-      touch-action:none;border:2px solid rgba(255,255,255,0.18); font-size:18px;
-    }
-    .touch-button:active{transform:scale(0.96)}
-    .hp-bar{width:150px;height:12px;background:#334155;border-radius:6px;overflow:hidden;margin-top:6px}
-    .hp-fill{height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width 0.2s}
-    #muteBtn{margin-left:8px;padding:6px 10px;font-size:12px;border-radius:8px}
-    @media (max-width:420px){
-      .touch-button{width:64px;height:64px;font-size:16px}
-      #touchArea{gap:8px}
-    }
-  </style>
+        #gameContainer {
+            position: relative;
+            width: 100%;
+            background: #000;
+            border-radius: 10px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+            overflow: hidden;
+        }
+
+        #gameCanvas {
+            width: 100%;
+            height: 70vh;
+            max-height: 600px;
+            display: block;
+            background: linear-gradient(180deg, #87CEEB 0%, #E0F6FF 50%, #90EE90 100%);
+        }
+
+        #ui {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            right: 20px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+        .ui-panel {
+            background: rgba(0,0,0,0.7);
+            padding: 15px 25px;
+            border-radius: 15px;
+            border: 3px solid #FFD700;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+        }
+
+        .ui-panel div {
+            margin: 5px 0;
+        }
+
+        #menu {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+        }
+
+        #menu.hidden {
+            display: none;
+        }
+
+        #menu h1 {
+            font-size: 4em;
+            margin-bottom: 30px;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.8);
+            background: linear-gradient(45deg, #FFD700, #FFA500);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        #menu p {
+            font-size: 1.3em;
+            margin-bottom: 40px;
+            text-align: center;
+            max-width: 90%;
+            line-height: 1.6;
+        }
+
+        #startBtn, #restartBtn {
+            padding: 20px 60px;
+            font-size: 1.8em;
+            background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+            color: #000;
+            border: none;
+            border-radius: 50px;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 8px 20px rgba(255,215,0,0.4);
+            font-weight: bold;
+        }
+
+        #startBtn:hover, #restartBtn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 12px 30px rgba(255,215,0,0.6);
+        }
+
+        #gameOver {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: none;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 100;
+        }
+
+        #gameOver h2 {
+            font-size: 4em;
+            margin-bottom: 30px;
+            color: #ff4444;
+            text-shadow: 4px 4px 8px rgba(0,0,0,0.8);
+        }
+
+        #finalScore {
+            font-size: 2.5em;
+            margin-bottom: 40px;
+            color: #FFD700;
+        }
+
+        #mobileControls {
+            display: none;
+            justify-content: space-between;
+            padding: 20px;
+            gap: 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+        }
+
+        .controlBtn {
+            width: 80px;
+            height: 80px;
+            background: rgba(255,215,0,0.3);
+            border: 4px solid #FFD700;
+            border-radius: 15px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2.5em;
+            color: white;
+            user-select: none;
+            touch-action: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 15px rgba(255,215,0,0.3);
+        }
+
+        .controlBtn:active {
+            transform: scale(0.9);
+            background: rgba(255,215,0,0.6);
+        }
+
+        .controlGroup {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        #jumpBtn {
+            width: 90px;
+            height: 90px;
+            background: rgba(0,255,0,0.3);
+            border-color: #00ff00;
+            font-size: 2em;
+        }
+
+        #shootBtn {
+            width: 90px;
+            height: 90px;
+            background: rgba(255,0,0,0.3);
+            border-color: #ff0000;
+        }
+
+        .controls-info {
+            font-size: 1.1em;
+            color: rgba(255,255,255,0.9);
+            text-align: center;
+            margin-bottom: 15px;
+            line-height: 1.8;
+        }
+
+        @media (max-width: 768px) {
+            #mobileControls {
+                display: flex;
+            }
+            #menu h1 {
+                font-size: 2.5em;
+            }
+            #menu p {
+                font-size: 1em;
+            }
+            .ui-panel {
+                font-size: 16px;
+                padding: 10px 15px;
+            }
+            #gameCanvas {
+                height: 50vh;
+            }
+        }
+
+        #hpBar {
+            position: absolute;
+            top: 100px;
+            left: 20px;
+            width: 250px;
+            height: 30px;
+            background: rgba(0,0,0,0.7);
+            border-radius: 15px;
+            border: 3px solid #FFD700;
+            overflow: hidden;
+            z-index: 10;
+        }
+
+        #hpFill {
+            height: 100%;
+            background: linear-gradient(90deg, #ff0000, #ff6b6b, #ffaa00);
+            transition: width 0.3s;
+            width: 100%;
+            box-shadow: inset 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .pause-text {
+            text-align: center;
+            font-size: 0.5em;
+            color: rgba(255,255,255,0.6);
+            margin-top: 20px;
+        }
+    </style>
 </head>
 <body>
-  <div id="gameWrap">
-    <canvas id="gameCanvas" width="900" height="600"></canvas>
+    <div id="gameWrapper">
+        <div id="gameContainer">
+            <canvas id="gameCanvas" width="1200" height="600"></canvas>
+            
+            <div id="ui">
+                <div class="ui-panel">
+                    <div>🏆 Skor: <span id="score">0</span></div>
+                    <div>🌊 Wave: <span id="wave">1</span></div>
+                </div>
+                <div class="ui-panel">
+                    <div>❤️ HP: <span id="hp">100</span></div>
+                    <div>🎯 Tembak: Space</div>
+                </div>
+            </div>
 
-    <div class="hud">
-      <div class="score">Skor: <span id="score">0</span></div>
-      <div class="hp">
-        HP: <span id="hp">100</span>
-        <div class="hp-bar"><div class="hp-fill" id="hpBar" style="width:100%"></div></div>
-      </div>
-      <div class="wave">Gelombang: <span id="wave">1</span></div>
+            <div id="hpBar">
+                <div id="hpFill"></div>
+            </div>
+
+            <div id="menu">
+                <h1>🦆 Bebek Manyun vs Zombi 🧟</h1>
+                <p class="controls-info">
+                    <strong>🎮 Kontrol Desktop:</strong><br>
+                    ← → atau A D untuk bergerak | ↑ atau W untuk lompat (2x untuk double jump)<br>
+                    <strong>Space</strong> untuk menembak | <strong>ESC</strong> untuk pause
+                </p>
+                <button id="startBtn">🎮 Mulai Bermain</button>
+                <p class="pause-text">Bertahan selama mungkin melawan zombie!</p>
+            </div>
+
+            <div id="gameOver">
+                <h2>💀 Game Over!</h2>
+                <div id="finalScore">Skor Akhir: 0</div>
+                <button id="restartBtn">🔄 Main Lagi</button>
+            </div>
+        </div>
+
+        <div id="mobileControls">
+            <div class="controlGroup">
+                <div class="controlBtn" id="leftBtn">◀</div>
+                <div class="controlBtn" id="rightBtn">▶</div>
+            </div>
+            <div class="controlGroup">
+                <div class="controlBtn" id="jumpBtn">⬆</div>
+                <div class="controlBtn" id="shootBtn">🔫</div>
+            </div>
+        </div>
     </div>
 
-    <div class="controls" id="desktopControls">
-      <small>Kontrol: ← → / A D — Lompat: ↑ / W — Serang: Space (tahan)</small>
-      <small style="margin-top:4px">Tekan ESC untuk pause</small>
-      <div style="margin-top:8px">
-        <button id="muteBtn" class="btn" style="padding:6px 10px;font-size:12px">🔊</button>
-      </div>
-    </div>
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Audio System
+        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        let audioEnabled = false;
 
-    <div id="overlayStart" class="centerOverlay">
-      <h1 style="margin:0">🦆 Bebek Manyun vs Zombi 🧟</h1>
-      <p style="margin:0">Tekan tombol <strong>Mulai Bermain</strong>. Gunakan Space (tahan) untuk menembak. Coba double-jump!</p>
-      <button id="startBtn" class="btn">🎮 Mulai Bermain</button>
-      <small style="color:#94a3b8">Cocok untuk desktop dan mobile</small>
-    </div>
-  </div>
-
-  <!-- Touch area under game (so it won't overlap canvas) -->
-  <div id="touchArea" aria-hidden="false">
-    <div class="touch-controls" id="touchControls" style="display:none">
-      <div class="touch-button" id="leftBtn">◀</div>
-      <div class="touch-button" id="jumpBtn">▲</div>
-      <div class="touch-button" id="rightBtn">▶</div>
-      <div class="touch-button" id="attackBtn">QUAK</div>
-    </div>
-  </div>
-
-<script>
-// ===== Bebek Manyun — Audio + Touch layout fixes =====
-
-const canvas = document.getElementById('gameCanvas');
-const ctx = canvas.getContext('2d');
-
-let W = 900, H = 600;
-let GROUND_Y = H - 80;
-
-const overlay = document.getElementById('overlayStart');
-const startBtn = document.getElementById('startBtn');
-const scoreEl = document.getElementById('score');
-const hpEl = document.getElementById('hp');
-const hpBar = document.getElementById('hpBar');
-const waveEl = document.getElementById('wave');
-const touchControls = document.getElementById('touchControls');
-const muteBtn = document.getElementById('muteBtn');
-const attackBtn = document.getElementById('attackBtn');
-
-let running = false;
-let paused = false;
-let score = 0;
-let wave = 1;
-let spawnTimer = 0;
-let spawnInterval = 120;
-let entities = [];
-let particles = [];
-let keys = {};
-let keysPressed = {};
-let highScore = parseInt(localStorage.getItem('bebekHighScore') || '0');
-
-const MAX_PARTICLES = 450;
-
-const player = {
-  x: 120, y: 0, w: 60, h: 48,
-  vx: 0, vy: 0, speed: 4.2,
-  onGround: false,
-  hp: 100, maxHp: 100,
-  attackCooldown: 0,
-  invulnerable: 0,
-  facing: 1, canDoubleJump: true
-};
-
-const GRAV = 0.6, FRICTION = 0.88;
-
-// ---------------- WebAudio (music + sfx) ----------------
-let audioCtx = null;
-let masterGain = null;
-let muted = false;
-let musicNode = null; // for background music interval
-let zombieMoanBuffer = null;
-
-function initAudio(){
-  if(audioCtx) return;
-  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-  masterGain = audioCtx.createGain();
-  masterGain.gain.value = 0.9;
-  masterGain.connect(audioCtx.destination);
-  loadZombieMoan(); // prepare moan sample (synth)
-  startBackgroundMusic();
-}
-
-function playOsc({type='sine', freq=440, dur=0.12, vol=0.5, pan=0} = {}){
-  if(!audioCtx || muted) return;
-  const o = audioCtx.createOscillator();
-  const g = audioCtx.createGain();
-  const p = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
-  o.type = type; o.frequency.value = freq;
-  g.gain.value = 0;
-  o.connect(g);
-  if(p){ g.connect(p); p.connect(masterGain); if(p.pan) p.pan.value = pan; }
-  else g.connect(masterGain);
-  const now = audioCtx.currentTime;
-  g.gain.setValueAtTime(0, now);
-  g.gain.linearRampToValueAtTime(vol, now + 0.01);
-  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
-  o.start(now); o.stop(now + dur + 0.03);
-}
-
-function playNoise({dur=0.08, vol=0.6} = {}){
-  if(!audioCtx || muted) return;
-  const bufferSize = Math.floor(audioCtx.sampleRate * dur);
-  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-  const data = buffer.getChannelData(0);
-  for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * Math.exp(-i / (bufferSize*0.8));
-  const src = audioCtx.createBufferSource();
-  src.buffer = buffer;
-  const g = audioCtx.createGain(); g.gain.value = vol;
-  src.connect(g); g.connect(masterGain);
-  src.start();
-}
-
-function playSound(name){
-  if(!audioCtx || muted) return;
-  switch(name){
-    case 'quack':
-      playOsc({type:'square', freq:600, dur:0.06, vol:0.12});
-      playOsc({type:'sine', freq:900, dur:0.10, vol:0.06});
-      break;
-    case 'gun':
-      playOsc({type:'square', freq:1200, dur:0.06, vol:0.28});
-      playNoise({dur:0.06, vol:0.14});
-      break;
-    case 'hit':
-      playOsc({type:'sine', freq:120, dur:0.16, vol:0.22});
-      playNoise({dur:0.05, vol:0.06});
-      break;
-    case 'enemyDie':
-      playOsc({type:'triangle', freq:200, dur:0.22, vol:0.18});
-      playOsc({type:'sine', freq:380, dur:0.16, vol:0.10});
-      break;
-    case 'zombieMoan':
-      // if we have a buffer, play it; otherwise fallback
-      if(zombieMoanBuffer){
-        const src = audioCtx.createBufferSource();
-        src.buffer = zombieMoanBuffer;
-        const g = audioCtx.createGain(); g.gain.value = 0.28;
-        src.connect(g); g.connect(masterGain);
-        src.start();
-      } else {
-        playOsc({type:'sine', freq:80, dur:0.6, vol:0.12});
-        playNoise({dur:0.15, vol:0.08});
-      }
-      break;
-    case 'gameOver':
-      playOsc({type:'square', freq:90, dur:0.6, vol:0.22});
-      break;
-    default: break;
-  }
-}
-
-// create a short zombie moan buffer (synth) to sound more natural
-function loadZombieMoan(){
-  if(!audioCtx) return;
-  const dur = 0.8;
-  const buf = audioCtx.createBuffer(1, Math.floor(audioCtx.sampleRate * dur), audioCtx.sampleRate);
-  const ch = buf.getChannelData(0);
-  for(let i=0;i<ch.length;i++){
-    const t = i / audioCtx.sampleRate;
-    // low sine + noisy envelope to simulate moan
-    ch[i] = (Math.sin(2*Math.PI*(60 + Math.sin(t*2)*6) * t) * 0.6 + (Math.random()*2-1)*0.18) * Math.exp(-t*0.8);
-  }
-  zombieMoanBuffer = buf;
-}
-
-// Simple background music loop (synthy melody)
-let musicInterval = null;
-function startBackgroundMusic(){
-  if(!audioCtx || muted) return;
-  if(musicInterval) return;
-  // small sequence using oscillators scheduled repeatedly
-  const notes = [440, 392, 349, 392, 440, 523, 440, 349]; // simple melody
-  function scheduleMelody(){
-    const now = audioCtx.currentTime;
-    for(let i=0;i<notes.length;i++){
-      const t = now + i * 0.32;
-      const o = audioCtx.createOscillator();
-      const g = audioCtx.createGain();
-      o.type = 'sine';
-      o.frequency.value = notes[i] * (Math.random()*0.02 + 0.99);
-      g.gain.value = 0;
-      o.connect(g); g.connect(masterGain);
-      g.gain.setValueAtTime(0, t);
-      g.gain.linearRampToValueAtTime(0.08, t + 0.02);
-      g.gain.exponentialRampToValueAtTime(0.001, t + 0.28);
-      o.start(t); o.stop(t + 0.3);
-    }
-  }
-  scheduleMelody();
-  musicInterval = setInterval(scheduleMelody, notes.length * 320);
-}
-
-function stopBackgroundMusic(){
-  if(musicInterval){ clearInterval(musicInterval); musicInterval = null; }
-}
-
-// ---------------- Helpers ----------------
-function rand(min, max){ return Math.random()*(max-min)+min; }
-
-// ---------------- Spawns ----------------
-function spawnZombie(){
-  const z = {
-    type: 'zombie',
-    x: W + 60,
-    y: GROUND_Y - 48,
-    w: 52, h: 64,
-    vx: rand(-1.6, -1.0) - Math.min(0.8, score/400),
-    hp: 20 + Math.floor(score/40) + wave * 5,
-    maxHp: 20 + Math.floor(score/40) + wave * 5,
-    attackTimer: 0,
-    walkPhase: Math.random()*Math.PI*2
-  };
-  entities.push(z);
-  // play a random low moan shortly after spawn
-  setTimeout(()=>{ playSound('zombieMoan'); }, Math.random()*600);
-  if(audioCtx && !musicInterval) startBackgroundMusic();
-}
-
-function spawnBat(){
-  const b = {
-    type: 'bat',
-    x: W + 60,
-    y: rand(120, GROUND_Y-200),
-    w:40, h:30,
-    vx: rand(-2.6, -1.6),
-    hp: 10 + wave * 2,
-    maxHp: 10 + wave * 2,
-    wobble: Math.random()*10
-  };
-  entities.push(b);
-}
-
-// ---------------- Shooting ----------------
-function shoot(){
-  if(player.attackCooldown > 0) return;
-  player.attackCooldown = 12;
-  const p = {
-    type: 'quack',
-    x: player.x + (player.facing > 0 ? player.w : -22),
-    y: player.y + 18,
-    vx: 10 * player.facing,
-    w: 20, h: 12,
-    dmg: 18 + Math.floor(wave/2)
-  };
-  entities.push(p);
-  createParticles(p.x, p.y, 4, '#8be0ff');
-  playSound('gun');
-}
-
-// ---------------- Particles ----------------
-function createParticles(x,y,count,color){
-  for(let i=0;i<count;i++){
-    particles.push({
-      x: x,
-      y: y,
-      vx: rand(-3,3),
-      vy: rand(-4,-1),
-      life: 30,
-      maxLife: 30,
-      color: color || '#ffd54a',
-      size: rand(3,8)
-    });
-  }
-  if(particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
-}
-
-// ---------------- Update ----------------
-function update(){
-  if(!running || paused) return;
-
-  if(keys['ArrowLeft'] || keys['a']){
-    player.vx = Math.max(player.vx - 0.85, -player.speed);
-    player.facing = -1;
-  }
-  if(keys['ArrowRight'] || keys['d']){
-    player.vx = Math.min(player.vx + 0.85, player.speed);
-    player.facing = 1;
-  }
-  if(!(keys['ArrowLeft']||keys['a']||keys['ArrowRight']||keys['d'])) player.vx *= FRICTION;
-
-  if(keysPressed['up']){
-    keysPressed['up'] = false;
-    if(player.onGround){
-      player.vy = -18; player.onGround = false; player.canDoubleJump = true;
-      playSound('quack');
-    } else if(player.canDoubleJump){
-      player.vy = -15; player.canDoubleJump = false;
-      createParticles(player.x + player.w/2, player.y + player.h/2, 8, '#8be0ff');
-      playSound('quack');
-    }
-  }
-
-  if(keys[' ']) shoot();
-
-  player.vy += GRAV; player.x += player.vx; player.y += player.vy;
-
-  if(player.y + player.h >= GROUND_Y){
-    const wasAir = !player.onGround;
-    player.y = GROUND_Y - player.h;
-    player.vy = 0; player.onGround = true;
-    if(wasAir) player.canDoubleJump = true;
-  }
-  if(player.x < 10) player.x = 10;
-  if(player.x + player.w > W - 10) player.x = W - 10 - player.w;
-  if(player.attackCooldown>0) player.attackCooldown--;
-  if(player.invulnerable>0) player.invulnerable--;
-
-  if(score > wave * 150 && entities.filter(e=>e.type==='zombie'||e.type==='bat').length === 0){
-    wave++; waveEl.textContent = wave; spawnInterval = Math.max(28, 120 - wave * 8);
-  }
-
-  spawnTimer++;
-  if(spawnTimer > spawnInterval){
-    spawnTimer = 0;
-    const sc = Math.min(0.72, 0.25 + score/260);
-    if(Math.random() < sc) spawnZombie();
-    if(Math.random() < 0.15 + Math.min(0.45, score/520)) spawnBat();
-  }
-
-  for(let i=entities.length-1;i>=0;i--){
-    const e = entities[i];
-    if(e.type === 'zombie'){
-      e.x += e.vx; e.walkPhase += 0.08 * Math.abs(e.vx) * 1.4; e.attackTimer++;
-      if(e.x < player.x + player.w && e.x + e.w > player.x &&
-         e.y + e.h > player.y + 10 && e.attackTimer > 30 && player.invulnerable <= 0){
-        player.hp -= 6; player.invulnerable = 28; e.attackTimer = 0;
-        createParticles(player.x + player.w/2, player.y + player.h/2, 6, '#ff4444'); playSound('hit');
-      }
-      if(e.x + e.w < -60) entities.splice(i,1);
-    }
-    if(e.type === 'bat'){
-      e.x += e.vx; e.wobble += 0.18; e.y += Math.sin(e.wobble) * 1.6;
-      if(e.x < player.x + player.w && e.x + e.w > player.x &&
-         e.y < player.y + player.h && e.y + e.h > player.y && player.invulnerable <= 0){
-        player.hp -= 3; player.invulnerable = 26; createParticles(player.x + player.w/2, player.y + player.h/2, 4, '#ff4444'); playSound('hit');
-      }
-      if(e.x + e.w < -60) entities.splice(i,1);
-    }
-    if(e.type === 'quack'){
-      e.x += e.vx;
-      for(let j=entities.length-1;j>=0;j--){
-        const t = entities[j]; if(t===e) continue;
-        if(t.type==='zombie' || t.type==='bat'){
-          if(e.x < t.x + t.w && e.x + e.w > t.x &&
-             e.y < t.y + t.h && e.y + e.h > t.y){
-            t.hp -= e.dmg; t.x += 10 * Math.sign(e.vx);
-            createParticles(t.x + t.w/2, t.y + t.h/2, 8, '#22c55e');
-            const idx = entities.indexOf(e); if(idx>=0) entities.splice(idx,1); break;
-          }
+        function initAudio() {
+            if (!audioEnabled && audioContext.state === 'suspended') {
+                audioContext.resume();
+                audioEnabled = true;
+            }
         }
-      }
-      if(e.x < -100 || e.x > W + 100){ const idx = entities.indexOf(e); if(idx>=0) entities.splice(idx,1); }
-    }
 
-    if((e.type==='zombie' || e.type==='bat') && e.hp <= 0){
-      const pts = (e.type==='zombie')? 35 : 16; score += pts;
-      createParticles(e.x + e.w/2, e.y + e.h/2, 14, '#ffd54a'); playSound('enemyDie'); entities.splice(i,1);
-    }
-  }
+        function playSound(frequency, duration, type = 'sine', volume = 0.3) {
+            if (!audioEnabled) return;
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.type = type;
+                oscillator.frequency.setValueAtTime(frequency, audioContext.currentTime);
+                
+                gainNode.gain.setValueAtTime(volume, audioContext.currentTime);
+                gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + duration);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + duration);
+            } catch (e) {
+                console.log('Audio error:', e);
+            }
+        }
 
-  if(!entities.some(x=>x.type==='zombie') && musicInterval) {
-    // keep music but stop moan loop if none
-  }
+        function playShootSound() {
+            playSound(800, 0.1, 'square', 0.2);
+            setTimeout(() => playSound(600, 0.05, 'square', 0.15), 50);
+        }
 
-  for(let i=particles.length-1;i>=0;i--){
-    const p = particles[i]; p.x += p.vx; p.y += p.vy; p.vy += 0.28; p.life--; if(p.life <= 0) particles.splice(i,1);
-  }
+        function playJumpSound() {
+            playSound(400, 0.15, 'sine', 0.25);
+            setTimeout(() => playSound(600, 0.1, 'sine', 0.2), 80);
+        }
 
-  if(player.hp <= 0){ playSound('gameOver'); endGame(); }
+        function playHitSound() {
+            playSound(200, 0.2, 'sawtooth', 0.3);
+        }
 
-  scoreEl.textContent = Math.floor(score);
-  hpEl.textContent = Math.max(0, Math.floor(player.hp));
-  hpBar.style.width = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
-  if(player.hp > 60) hpBar.style.background = 'linear-gradient(90deg,#22c55e,#16a34a)';
-  else if(player.hp > 30) hpBar.style.background = 'linear-gradient(90deg,#eab308,#ca8a04)';
-  else hpBar.style.background = 'linear-gradient(90deg,#ef4444,#dc2626)';
-}
+        function playDeathSound() {
+            playSound(100, 0.3, 'sawtooth', 0.4);
+            setTimeout(() => playSound(80, 0.3, 'sawtooth', 0.3), 100);
+            setTimeout(() => playSound(60, 0.4, 'sawtooth', 0.2), 200);
+        }
 
-// ---------------- Draw (same as before, adjusted weapon pos) ----------------
-function draw(){
-  ctx.clearRect(0,0,W,H);
-  const g = ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,'#cfefff'); g.addColorStop(1,'#eaf9ff');
-  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+        function playEnemyHitSound() {
+            playSound(300, 0.1, 'square', 0.2);
+        }
 
-  const cloudOffset = (Date.now() % 60000) / 120;
-  for(let i=0;i<5;i++){ ctx.globalAlpha = 0.22; ctx.beginPath(); ctx.ellipse(100 + i*200 + cloudOffset, 80 + Math.sin(i)*18, 92, 36, 0, 0, Math.PI*2); ctx.fillStyle='#ffffff'; ctx.fill(); ctx.globalAlpha = 1; }
+        function playEnemyDeathSound() {
+            playSound(150, 0.2, 'triangle', 0.25);
+            setTimeout(() => playSound(100, 0.15, 'triangle', 0.2), 100);
+        }
 
-  ctx.fillStyle = '#6b8f2f'; ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
-  ctx.fillStyle = '#5a7a28';
-  for(let i=0;i<20;i++) ctx.fillRect(i*45 - (Date.now()/20)%45, GROUND_Y, 25, 4);
+        function playWaveCompleteSound() {
+            playSound(523, 0.15, 'sine', 0.3);
+            setTimeout(() => playSound(659, 0.15, 'sine', 0.3), 150);
+            setTimeout(() => playSound(784, 0.2, 'sine', 0.35), 300);
+        }
 
-  for(const p of particles){ ctx.globalAlpha = p.life / p.maxLife; ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill(); ctx.globalAlpha = 1; }
+        function playGameOverSound() {
+            playSound(440, 0.3, 'sawtooth', 0.4);
+            setTimeout(() => playSound(370, 0.3, 'sawtooth', 0.35), 300);
+            setTimeout(() => playSound(294, 0.5, 'sawtooth', 0.3), 600);
+        }
 
-  if(player.invulnerable <= 0 || Math.floor(Date.now()/100) % 2 === 0) drawDuck(player.x, player.y, player.w, player.h, player.facing);
+        // Game state
+        let gameRunning = false;
+        let gamePaused = false;
+        let score = 0;
+        let wave = 1;
+        let frameCount = 0;
 
-  for(const e of entities){
-    if(e.type === 'zombie') drawZombie(e.x, e.y, e.w, e.h, e.walkPhase);
-    if(e.type === 'bat') drawBat(e.x, e.y, e.w, e.h);
-    if(e.type === 'quack') drawQuack(e.x, e.y, e.w, e.h);
+        // Player
+        const player = {
+            x: 150,
+            y: 400,
+            width: 50,
+            height: 50,
+            velocityX: 0,
+            velocityY: 0,
+            speed: 7,
+            jumpPower: 16,
+            maxHP: 100,
+            hp: 100,
+            canJump: true,
+            jumpsRemaining: 2,
+            onGround: false,
+            invincible: 0,
+            direction: 1
+        };
 
-    if(e.type === 'zombie' || e.type === 'bat'){
-      const hpPct = Math.max(0, e.hp / (e.maxHp || 1));
-      ctx.fillStyle = '#334155'; ctx.fillRect(e.x, e.y - 8, e.w, 4);
-      ctx.fillStyle = hpPct > 0.5 ? '#22c55e' : hpPct > 0.25 ? '#eab308' : '#ef4444';
-      ctx.fillRect(e.x, e.y - 8, e.w * hpPct, 4);
-    }
-  }
+        // Bullets
+        const bullets = [];
+        const bulletSpeed = 12;
+        let lastShotTime = 0;
+        const shootCooldown = 150;
 
-  if(paused){ ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0,0,W,H); ctx.fillStyle = '#fff'; ctx.font = 'bold 48px Inter'; ctx.textAlign = 'center'; ctx.fillText('PAUSE', W/2, H/2); ctx.font='18px Inter'; ctx.fillText('Tekan ESC untuk melanjutkan', W/2, H/2 + 40); ctx.textAlign = 'left'; }
-}
+        // Enemies
+        const enemies = [];
+        const enemySpawnRate = 100;
+        let lastEnemySpawn = 0;
 
-function drawDuck(x,y,w,h,facing){
-  ctx.save(); ctx.translate(x + w/2, y + h/2); ctx.scale(facing,1); ctx.translate(-(x + w/2), -(y + h/2));
-  const bodyX = x + w*0.45, bodyY = y + h*0.5;
-  ctx.beginPath(); ctx.fillStyle = '#ffd754'; ctx.ellipse(bodyX, bodyY, w*0.45, h*0.55, 0, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.fillStyle='rgba(0,0,0,0.06)'; ctx.ellipse(bodyX - 8, bodyY + 4, w*0.32, h*0.35, 0, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#ffcc33'; ctx.beginPath(); ctx.ellipse(x + w*0.25, y + h*0.5, w*0.18, h*0.28, -0.3, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#ffd754'; ctx.beginPath(); ctx.arc(x + w*0.4, y + h*0.28, w*0.22, 0, Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + w*0.33, y + h*0.25, 7,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#052022'; ctx.beginPath(); ctx.arc(x + w*0.33, y + h*0.25, 4,0,Math.PI*2); ctx.fill();
-  ctx.strokeStyle = '#5b3a00'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x + w*0.28, y + h*0.35); ctx.quadraticCurveTo(x + w*0.33, y + h*0.40, x + w*0.40, y + h*0.35); ctx.stroke();
-  ctx.fillStyle = '#ff8a00'; ctx.fillRect(x + w*0.28, y+h-6, 10, 4); ctx.fillRect(x + w*0.54, y+h-6, 10, 4);
-  // weapon (adjusted)
-  ctx.save();
-  const gunX = x + w*0.5; const gunY = y + h*0.42;
-  ctx.translate(gunX, gunY); ctx.rotate(-0.12);
-  ctx.fillStyle = '#333'; ctx.fillRect(-8, -5, 60, 9);
-  ctx.fillStyle = '#222'; ctx.beginPath(); ctx.moveTo(18, -5); ctx.lineTo(30, -5); ctx.lineTo(30, 7); ctx.lineTo(18, 7); ctx.closePath(); ctx.fill();
-  ctx.fillStyle = '#111'; ctx.fillRect(48, -2, 22, 3); ctx.fillStyle = '#2b2b2b'; ctx.fillRect(4, 6, 8, 14);
-  ctx.restore();
-  ctx.restore();
-}
+        // Particles
+        const particles = [];
 
-function drawZombie(x,y,w,h,phase=0){
-  ctx.save(); ctx.translate(x,y); ctx.fillStyle = '#6aa56a'; ctx.fillRect(8,20,w-16,h-20); ctx.fillRect(4,0,w-8,24);
-  const swing = Math.sin(phase) * 6; ctx.fillStyle = '#5c9f5b'; ctx.fillRect(-2, 28 + swing*0.6, 8, 25); ctx.fillRect(w-6, 28 - swing*0.6, 8, 25);
-  ctx.fillStyle = '#fff'; ctx.fillRect(12,6,10,10); ctx.fillRect(w-22,6,10,10); ctx.fillStyle = '#8b0000'; ctx.fillRect(15,9,4,4); ctx.fillRect(w-19,9,4,4);
-  ctx.fillStyle = '#062b3a'; ctx.fillRect(w*0.3, 18, w*0.4, 3);
-  const legShift = Math.sin(phase) * 4; ctx.fillRect(w*0.2, h-10 + legShift, 10, 12); ctx.fillRect(w*0.6, h-10 - legShift, 10, 12); ctx.restore();
-}
+        // Controls
+        const keys = {};
+        let shooting = false;
 
-function drawBat(x,y,w,h){
-  ctx.save(); ctx.translate(x,y); ctx.fillStyle = '#2d2d2d'; ctx.beginPath(); ctx.ellipse(w*0.5, h*0.5, w*0.3, h*0.4, 0,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#3b3b3b'; ctx.beginPath(); ctx.ellipse(w*0.15, h*0.5, w*0.35, h*0.3, -0.5,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.ellipse(w*0.85, h*0.5, w*0.35, h*0.3, 0.5,0,Math.PI*2); ctx.fill();
-  ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(w*0.4, h*0.4, 3,0,Math.PI*2); ctx.fill(); ctx.beginPath(); ctx.arc(w*0.6, h*0.4, 3,0,Math.PI*2); ctx.fill(); ctx.restore();
-}
+        // Event listeners
+        document.addEventListener('keydown', (e) => {
+            keys[e.key.toLowerCase()] = true;
+            
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                e.preventDefault();
+                shooting = true;
+            }
+            
+            if (e.key === 'Escape') {
+                togglePause();
+            }
+        });
 
-function drawQuack(x,y,w,h){ ctx.fillStyle = '#8be0ff'; ctx.beginPath(); ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI*2); ctx.fill(); ctx.fillStyle='#062b3a'; ctx.font='bold 10px Inter'; ctx.fillText('Q', x+5, y+9); }
+        document.addEventListener('keyup', (e) => {
+            keys[e.key.toLowerCase()] = false;
+            
+            if (e.key === ' ' || e.key === 'Spacebar') {
+                shooting = false;
+            }
+        });
 
-// ---------------- Loop control ----------------
-function loop(){ update(); draw(); if(running) requestAnimationFrame(loop); }
+        // Mobile controls
+        ['leftBtn', 'rightBtn'].forEach(id => {
+            const key = id === 'leftBtn' ? 'a' : 'd';
+            document.getElementById(id).addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                keys[key] = true;
+            });
+            document.getElementById(id).addEventListener('touchend', (e) => {
+                e.preventDefault();
+                keys[key] = false;
+            });
+        });
 
-function startGame(){
-  initAudio();
-  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-  running = true; paused = false;
-  score = 0; wave = 1; entities = []; particles = [];
-  player.hp = 100; player.x = 120; player.y = GROUND_Y - player.h; player.vx=0; player.vy=0;
-  player.invulnerable = 0; player.facing = 1; player.canDoubleJump = true;
-  spawnTimer = 0; spawnInterval = 120;
-  overlay.style.display = 'none';
-  // show touch controls if mobile
-  touchControls.style.display = /Mobi|Android/i.test(navigator.userAgent) ? 'flex' : 'none';
-  requestAnimationFrame(loop);
-}
+        document.getElementById('jumpBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (player.jumpsRemaining > 0) {
+                player.velocityY = -player.jumpPower;
+                player.jumpsRemaining--;
+                player.onGround = false;
+                playJumpSound();
+            }
+        });
 
-function endGame(){
-  running = false;
-  if(score > highScore){ highScore = score; localStorage.setItem('bebekHighScore', highScore); }
-  overlay.style.display = 'flex';
-  overlay.querySelector('h1').textContent = '☠️ Game Over!';
-  overlay.querySelector('p').innerHTML = `<strong>Skor Akhir: ${Math.floor(score)}</strong><br>Gelombang: ${wave}<br>High Score: ${highScore}<br><br>Tekan tombol untuk bermain lagi!`;
-}
+        document.getElementById('shootBtn').addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            shooting = true;
+        });
+        document.getElementById('shootBtn').addEventListener('touchend', (e) => {
+            e.preventDefault();
+            shooting = false;
+        });
 
-// ---------------- Input ----------------
-window.addEventListener('keydown', e=>{
-  if(e.code === 'Space'){ e.preventDefault(); keys[' '] = true; }
-  if(e.key === 'ArrowUp' || e.key === 'w'){ keysPressed['up'] = true; }
-  keys[e.key] = true;
-  if(e.key === 'Escape') togglePause();
-});
-window.addEventListener('keyup', e=>{
-  if(e.code === 'Space'){ keys[' '] = false; }
-  keys[e.key] = false;
-});
+        document.getElementById('startBtn').addEventListener('click', startGame);
+        document.getElementById('restartBtn').addEventListener('click', restartGame);
 
-// Attack hold functions
-function startFiring(){ keys[' '] = true; }
-function stopFiring(){ keys[' '] = false; }
+        function startGame() {
+            initAudio();
+            document.getElementById('menu').classList.add('hidden');
+            gameRunning = true;
+            gamePaused = false;
+            playWaveCompleteSound();
+            gameLoop();
+        }
 
-attackBtn && attackBtn.addEventListener('touchstart', e=>{ e.preventDefault(); startFiring(); });
-attackBtn && attackBtn.addEventListener('touchend', e=>{ e.preventDefault(); stopFiring(); });
-attackBtn && attackBtn.addEventListener('touchcancel', e=>{ e.preventDefault(); stopFiring(); });
-attackBtn && attackBtn.addEventListener('pointerdown', e=>{ e.preventDefault(); startFiring(); });
-window.addEventListener('pointerup', e=>{ stopFiring(); });
+        function restartGame() {
+            initAudio();
+            document.getElementById('gameOver').style.display = 'none';
+            score = 0;
+            wave = 1;
+            player.hp = player.maxHP;
+            player.x = 150;
+            player.y = 400;
+            player.velocityX = 0;
+            player.velocityY = 0;
+            bullets.length = 0;
+            enemies.length = 0;
+            particles.length = 0;
+            updateUI();
+            gameRunning = true;
+            gamePaused = false;
+            playWaveCompleteSound();
+            gameLoop();
+        }
 
-function addTouch(btn, key, isOneShot=false){
-  if(!btn) return;
-  btn.addEventListener('touchstart', e=>{ e.preventDefault(); if(isOneShot) keysPressed[key]=true; else keys[key]=true; });
-  btn.addEventListener('touchend', e=>{ e.preventDefault(); if(!isOneShot) keys[key]=false; });
-  btn.addEventListener('touchcancel', e=>{ e.preventDefault(); if(!isOneShot) keys[key]=false; });
-}
-addTouch(document.getElementById('leftBtn'), 'ArrowLeft');
-addTouch(document.getElementById('rightBtn'), 'ArrowRight');
-addTouch(document.getElementById('jumpBtn'), 'up', true);
+        function togglePause() {
+            if (!gameRunning) return;
+            gamePaused = !gamePaused;
+            if (!gamePaused) {
+                gameLoop();
+            }
+        }
 
-muteBtn.addEventListener('click', ()=>{
-  muted = !muted;
-  muteBtn.textContent = muted ? '🔇' : '🔊';
-  if(masterGain) masterGain.gain.value = muted ? 0 : 0.9;
-  if(muted) stopBackgroundMusic(); else startBackgroundMusic();
-});
+        function gameOver() {
+            gameRunning = false;
+            playGameOverSound();
+            document.getElementById('finalScore').textContent = `Skor Akhir: ${score}`;
+            document.getElementById('gameOver').style.display = 'flex';
+        }
 
-// ---------------- Responsive sizing (fit Galaxy A23 & others) ----------------
-function resizeCanvas(){
-  const wrap = document.getElementById('gameWrap');
-  const rect = wrap.getBoundingClientRect();
-  // target width is wrapper width; use logical canvas 900x600 scaled to CSS size
-  const desiredWidth = Math.min(rect.width, 900);
-  const desiredHeight = Math.round(desiredWidth * (600 / 900));
-  canvas.style.width = desiredWidth + 'px';
-  canvas.style.height = desiredHeight + 'px';
-  // logical coords remain 900x600
-  W = 900; H = 600; GROUND_Y = H - 80;
-  if(player.x + player.w > W) player.x = W - player.w - 10;
-  if(player.y + player.h > GROUND_Y) player.y = GROUND_Y - player.h;
-}
-window.addEventListener('resize', resizeCanvas);
-window.addEventListener('orientationchange', ()=> setTimeout(resizeCanvas, 200));
-resizeCanvas();
+        function updateUI() {
+            document.getElementById('score').textContent = score;
+            document.getElementById('wave').textContent = wave;
+            document.getElementById('hp').textContent = Math.max(0, Math.floor(player.hp));
+            document.getElementById('hpFill').style.width = (player.hp / player.maxHP * 100) + '%';
+        }
 
-// prevent context menu
-document.querySelectorAll('.touch-button').forEach(btn => btn.addEventListener('contextmenu', e=>e.preventDefault()));
+        function createParticle(x, y, color) {
+            for (let i = 0; i < 8; i++) {
+                particles.push({
+                    x: x,
+                    y: y,
+                    vx: (Math.random() - 0.5) * 10,
+                    vy: (Math.random() - 0.5) * 10,
+                    life: 40,
+                    size: Math.random() * 4 + 2,
+                    color: color
+                });
+            }
+        }
 
-// demo start screen
-let demoTimer = 0;
-function demoAnimation(){
-  if(!running){
-    demoTimer++;
-    if(demoTimer > 90 && Math.random() < 0.12){
-      if(Math.random() < 0.5) spawnZombie(); else spawnBat();
-      demoTimer = 0;
-    }
-    for(let i=entities.length-1;i>=0;i--){
-      const e = entities[i]; e.x += e.vx; if(e.wobble !== undefined){ e.wobble += 0.15; e.y += Math.sin(e.wobble)*1.5; } if(e.x < -120) entities.splice(i,1);
-    }
-    draw(); requestAnimationFrame(demoAnimation);
-  }
-}
-demoAnimation();
-startBtn.addEventListener('click', ()=>{ startGame(); });
+        function drawDuck(x, y, width, height, invincible) {
+            if (invincible % 10 < 5 || invincible === 0) {
+                // Body
+                ctx.fillStyle = '#FFD700';
+                ctx.beginPath();
+                ctx.ellipse(x + width/2, y + height/2, width/2, height/2, 0, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Head
+                ctx.beginPath();
+                ctx.arc(x + width * 0.7, y + height * 0.3, width * 0.3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Beak
+                ctx.fillStyle = '#FF8C00';
+                ctx.beginPath();
+                ctx.moveTo(x + width * 0.9, y + height * 0.3);
+                ctx.lineTo(x + width * 1.1, y + height * 0.25);
+                ctx.lineTo(x + width * 1.1, y + height * 0.35);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Eye
+                ctx.fillStyle = '#000';
+                ctx.beginPath();
+                ctx.arc(x + width * 0.75, y + height * 0.25, 3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Wing
+                ctx.fillStyle = '#FFA500';
+                ctx.beginPath();
+                ctx.ellipse(x + width * 0.4, y + height * 0.6, width * 0.2, height * 0.15, -0.3, 0, Math.PI * 2);
+                ctx.fill();
+                
+                // Feet
+                ctx.fillStyle = '#FF8C00';
+                ctx.fillRect(x + width * 0.3, y + height * 0.95, 8, 4);
+                ctx.fillRect(x + width * 0.6, y + height * 0.95, 8, 4);
+            }
+        }
 
-// pause
-function togglePause(){ if(!running) return; paused = !paused; if(!paused) requestAnimationFrame(loop); }
+        function drawZombie(x, y, width, height, type) {
+            // Body color based on type
+            if (type === 'zombie') {
+                ctx.fillStyle = '#2d5016';
+            } else if (type === 'fast') {
+                ctx.fillStyle = '#8B7355';
+            } else {
+                ctx.fillStyle = '#654321';
+            }
+            
+            // Body
+            ctx.fillRect(x, y + height * 0.4, width, height * 0.6);
+            
+            // Head
+            ctx.fillStyle = type === 'zombie' ? '#567d46' : (type === 'fast' ? '#D2691E' : '#8B4513');
+            ctx.fillRect(x + width * 0.1, y, width * 0.8, height * 0.5);
+            
+            // Eyes (red)
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(x + width * 0.25, y + height * 0.15, 8, 8);
+            ctx.fillRect(x + width * 0.6, y + height * 0.15, 8, 8);
+            
+            // Mouth
+            ctx.fillStyle = '#000';
+            ctx.fillRect(x + width * 0.2, y + height * 0.35, width * 0.6, 4);
+            
+            // Arms
+            ctx.fillStyle = type === 'zombie' ? '#567d46' : (type === 'fast' ? '#D2691E' : '#8B4513');
+            ctx.fillRect(x - 5, y + height * 0.5, 8, height * 0.3);
+            ctx.fillRect(x + width - 3, y + height * 0.5, 8, height * 0.3);
+        }
 
-console.log('Fix terbaru siap — tekan Mulai Bermain lalu coba di HP (Galaxy A23).');
-</script>
+        function updatePlayer() {
+            // Horizontal movement
+            if (keys['a'] || keys['arrowleft']) {
+                player.velocityX = -player.speed;
+                player.direction = -1;
+            } else if (keys['d'] || keys['arrowright']) {
+                player.velocityX = player.speed;
+                player.direction = 1;
+            } else {
+                player.velocityX *= 0.85;
+            }
+
+            // Jump
+            if ((keys['w'] || keys['arrowup']) && player.jumpsRemaining > 0 && player.canJump) {
+                player.velocityY = -player.jumpPower;
+                player.jumpsRemaining--;
+                player.canJump = false;
+                player.onGround = false;
+                playJumpSound();
+            }
+
+            if (!keys['w'] && !keys['arrowup']) {
+                player.canJump = true;
+            }
+
+            // Gravity
+            player.velocityY += 0.8;
+
+            // Update position
+            player.x += player.velocityX;
+            player.y += player.velocityY;
+
+            // Ground collision
+            const ground = canvas.height - 120;
+            if (player.y + player.height > ground) {
+                player.y = ground - player.height;
+                player.velocityY = 0;
+                player.jumpsRemaining = 2;
+                player.onGround = true;
+            }
+
+            // Wall collision
+            if (player.x < 0) player.x = 0;
+            if (player.x + player.width > canvas.width) player.x = canvas.width - player.width;
+
+            // Shooting
+            if (shooting) {
+                const now = Date.now();
+                if (now - lastShotTime > shootCooldown) {
+                    bullets.push({
+                        x: player.x + (player.direction > 0 ? player.width : 0),
+                        y: player.y + player.height / 2 - 3,
+                        width: 15,
+                        height: 6,
+                        direction: player.direction
+                    });
+                    playShootSound();
+                    lastShotTime = now;
+                }
+            }
+
+            // Decrease invincibility
+            if (player.invincible > 0) {
+                player.invincible--;
+            }
+        }
+
+        function updateBullets() {
+            for (let i = bullets.length - 1; i >= 0; i--) {
+                bullets[i].x += bulletSpeed * bullets[i].direction;
+                
+                if (bullets[i].x > canvas.width || bullets[i].x < 0) {
+                    bullets.splice(i, 1);
+                }
+            }
+        }
+
+        function spawnEnemy() {
+            const now = frameCount;
+            if (now - lastEnemySpawn > Math.max(enemySpawnRate - (wave * 3), 30)) {
+                const enemyTypes = ['zombie', 'fast', 'tank'];
+                const weights = wave >= 3 ? [0.5, 0.3, 0.2] : (wave >= 2 ? [0.7, 0.3, 0] : [1, 0, 0]);
+                
+                const rand = Math.random();
+                let type = 'zombie';
+                if (rand > weights[0] && rand <= weights[0] + weights[1]) type = 'fast';
+                else if (rand > weights[0] + weights[1]) type = 'tank';
+                
+                let enemy = {
+                    x: canvas.width,
+                    y: canvas.height - 170,
+                    width: 45,
+                    height: 50,
+                    speed: 2.5,
+                    hp: 3,
+                    type: type
+                };
+
+                if (type === 'fast') {
+                    enemy.speed = 5;
+                    enemy.hp = 2;
+                    enemy.width = 35;
+                    enemy.height = 45;
+                } else if (type === 'tank') {
+                    enemy.speed = 1.5;
+                    enemy.hp = 10;
+                    enemy.width = 60;
+                    enemy.height = 65;
+                    enemy.y = canvas.height - 185;
+                }
+
+                enemies.push(enemy);
+                lastEnemySpawn = now;
+            }
+        }
+
+        function updateEnemies() {
+            for (let i = enemies.length - 1; i >= 0; i--) {
+                enemies[i].x -= enemies[i].speed;
+                
+                // Check collision with player
+                if (!player.invincible &&
+                    player.x < enemies[i].x + enemies[i].width &&
+                    player.x + player.width > enemies[i].x &&
+                    player.y < enemies[i].y + enemies[i].height &&
+                    player.y + player.height > enemies[i].y) {
+                    
+                    player.hp -= 15;
+                    player.invincible = 60;
+                    createParticle(player.x + player.width/2, player.y + player.height/2, '#ff0000');
+                    playHitSound();
+                    
+                    if (player.hp <= 0) {
+                        playDeathSound();
+                        gameOver();
+                        return;
+                    }
+                    updateUI();
+                }
+                
+                // Check collision with bullets
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    if (bullets[j] && enemies[i] &&
+                        bullets[j].x < enemies[i].x + enemies[i].width &&
+                        bullets[j].x + bullets[j].width > enemies[i].x &&
+                        bullets[j].y < enemies[i].y + enemies[i].height &&
+                        bullets[j].y + bullets[j].height > enemies[i].y) {
+                        
+                        enemies[i].hp--;
+                        bullets.splice(j, 1);
+                        createParticle(enemies[i].x + enemies[i].width/2, enemies[i].y + enemies[i].height/2, '#00ff00');
+                        playEnemyHitSound();
+                        
+                        if (enemies[i].hp <= 0) {
+                            score += enemies[i].type === 'fast' ? 20 : (enemies[i].type === 'tank' ? 50 : 10);
+                            playEnemyDeathSound();
+                            enemies.splice(i, 1);
+                            
+                            if (score >= wave * 150) {
+                                wave++;
+                                playWaveCompleteSound();
+                            }
+                            updateUI();
+                            break;
+                        }
+                    }
+                }
+                
+                // Remove if off screen
+                if (enemies[i] && enemies[i].x + enemies[i].width < 0) {
+                    enemies.splice(i, 1);
+                }
+            }
+        }
+
+        function updateParticles() {
+            for (let i = particles.length - 1; i >= 0; i--) {
+                particles[i].x += particles[i].vx;
+                particles[i].y += particles[i].vy;
+                particles[i].vy += 0.3;
+                particles[i].life--;
+                
+                if (particles[i].life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+        }
+
+        function draw() {
+            // Clear canvas with gradient
+            const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            gradient.addColorStop(0, '#87CEEB');
+            gradient.addColorStop(0.7, '#E0F6FF');
+            gradient.addColorStop(1, '#90EE90');
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Draw clouds
+            ctx.fillStyle = 'rgba(255,255,255,0.6)';
+            for (let i = 0; i < 5; i++) {
+                const x = (frameCount * 0.2 + i * 250) % (canvas.width + 100);
+                ctx.beginPath();
+                ctx.arc(x, 80 + i * 30, 30, 0, Math.PI * 2);
+                ctx.arc(x + 25, 80 + i * 30, 40, 0, Math.PI * 2);
+                ctx.arc(x + 50, 80 + i * 30, 30, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            // Draw ground
+            ctx.fillStyle = '#654321';
+            ctx.fillRect(0, canvas.height - 120, canvas.width, 120);
+            
+            // Draw grass
+            ctx.fillStyle = '#228B22';
+            ctx.fillRect(0, canvas.height - 120, canvas.width, 15);
+            
+            // Draw grass details
+            ctx.fillStyle = '#32CD32';
+            for (let i = 0; i < canvas.width; i += 20) {
+                ctx.fillRect(i, canvas.height - 120, 3, 8);
+                ctx.fillRect(i + 10, canvas.height - 115, 3, 10);
+            }
+            
+            // Draw player
+            drawDuck(player.x, player.y, player.width, player.height, player.invincible);
+            
+            // Draw bullets
+            ctx.fillStyle = '#FFD700';
+            ctx.strokeStyle = '#FF0000';
+            ctx.lineWidth = 2;
+            bullets.forEach(bullet => {
+                ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+                ctx.strokeRect(bullet.x, bullet.y, bullet.width, bullet.height);
+            });
+            
+            // Draw enemies
+            enemies.forEach(enemy => {
+                drawZombie(enemy.x, enemy.y, enemy.width, enemy.height, enemy.type);
+            });
+            
+            // Draw particles
+            particles.forEach(particle => {
+                ctx.fillStyle = particle.color;
+                ctx.globalAlpha = particle.life / 40;
+                ctx.beginPath();
+                ctx.arc(particle.x, particle.y, particle.size, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.globalAlpha = 1;
+            });
+
+            // Draw pause overlay
+            if (gamePaused) {
+                ctx.fillStyle = 'rgba(0,0,0,0.8)';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = '#FFD700';
+                ctx.font = 'bold 72px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText('⏸ PAUSE', canvas.width/2, canvas.height/2);
+                ctx.font = '32px Arial';
+                ctx.fillStyle = '#fff';
+                ctx.fillText('Tekan ESC untuk melanjutkan', canvas.width/2, canvas.height/2 + 60);
+            }
+        }
+
+        function gameLoop() {
+            if (!gameRunning || gamePaused) return;
+            
+            frameCount++;
+            
+            updatePlayer();
+            updateBullets();
+            spawnEnemy();
+            updateEnemies();
+            updateParticles();
+            draw();
+            
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Initialize
+        updateUI();
+        draw();
+    </script>
 </body>
 </html>
