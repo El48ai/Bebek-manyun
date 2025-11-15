@@ -7,18 +7,31 @@
   <style>
     :root{--bg:#98d6ff;--ground:#6b8f2f;--ui:#0f172a}
     html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
-    body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--bg),#bfe9ff);}
+    body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--bg),#bfe9ff);padding:10px;}
     #gameWrap{width:100%;max-width:900px;height:600px;box-shadow:0 10px 30px rgba(0,0,0,0.25);border-radius:12px;overflow:hidden;background:white;position:relative}
     canvas{display:block;background:linear-gradient(#cfefff, #eaf9ff);}
-    .hud{position:absolute;left:12px;top:12px;color:var(--ui);font-weight:700;}
+    .hud{position:absolute;left:12px;top:12px;color:var(--ui);font-weight:700;z-index:10;}
     .hud .score{font-size:20px}
     .hud .hp{margin-top:6px;font-size:14px}
-    .controls{position:absolute;right:12px;top:12px;text-align:right}
-    .controls small{display:block;color:#334155}
-    .centerOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(15,23,42,0.02)}
-    .btn{background:#0f172a;color:white;padding:10px 18px;border-radius:10px;border:none;font-weight:700;cursor:pointer}
-    .touch-controls{position:absolute;left:12px;bottom:12px;display:flex;gap:8px}
-    .touch-button{width:64px;height:64px;border-radius:12px;background:rgba(0,0,0,0.12);display:flex;align-items:center;justify-content:center;font-weight:800;color:#062b3a}
+    .hud .wave{margin-top:4px;font-size:12px;color:#475569}
+    .controls{position:absolute;right:12px;top:12px;text-align:right;z-index:10;}
+    .controls small{display:block;color:#334155;font-size:11px}
+    .centerOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:100;}
+    .centerOverlay h1{color:#fff;margin:0;font-size:32px}
+    .centerOverlay p{color:#cbd5e1;margin:0;text-align:center;max-width:400px;line-height:1.5}
+    .btn{background:#0f172a;color:white;padding:12px 24px;border-radius:10px;border:none;font-weight:700;cursor:pointer;font-size:16px;transition:all 0.2s}
+    .btn:hover{background:#1e293b;transform:translateY(-2px)}
+    .btn:active{transform:translateY(0)}
+    .touch-controls{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:10}
+    .touch-button{width:64px;height:64px;border-radius:12px;background:rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;user-select:none;touch-action:none;border:2px solid rgba(255,255,255,0.3)}
+    .touch-button:active{background:rgba(0,0,0,0.4);transform:scale(0.95)}
+    .hp-bar{width:150px;height:12px;background:#334155;border-radius:6px;overflow:hidden;margin-top:6px}
+    .hp-fill{height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width 0.3s}
+    .particle{position:absolute;pointer-events:none}
+    @media (max-width:768px){
+      .controls{display:none}
+      #gameWrap{height:500px}
+    }
   </style>
 </head>
 <body>
@@ -26,16 +39,21 @@
     <canvas id="gameCanvas" width="900" height="600"></canvas>
     <div class="hud">
       <div class="score">Skor: <span id="score">0</span></div>
-      <div class="hp">HP: <span id="hp">100</span></div>
+      <div class="hp">
+        HP: <span id="hp">100</span>
+        <div class="hp-bar"><div class="hp-fill" id="hpBar" style="width:100%"></div></div>
+      </div>
+      <div class="wave">Gelombang: <span id="wave">1</span></div>
     </div>
     <div class="controls">
       <small>Kontrol: ← → / A D — Lompat: ↑ / W — Serang: Space</small>
+      <small style="margin-top:4px">Tekan ESC untuk pause</small>
     </div>
     <div id="overlayStart" class="centerOverlay">
-      <h1 style="margin:0">Bebek Manyun vs Zombi</h1>
-      <p style="margin:0">Lawan gerombolan zombi. Jaga HP dan kumpulkan skor!</p>
-      <button id="startBtn" class="btn">Mainkan</button>
-      <small style="color:#334155">Cocok untuk desktop dan HP</small>
+      <h1 style="margin:0">🦆 Bebek Manyun vs Zombi 🧟</h1>
+      <p style="margin:0">Lawan gerombolan zombi dan kelelawar! Bertahan selama mungkin dan kumpulkan skor tertinggi.</p>
+      <button id="startBtn" class="btn">🎮 Mulai Bermain</button>
+      <small style="color:#94a3b8">Cocok untuk desktop dan mobile</small>
     </div>
 
     <div class="touch-controls" id="touchControls" style="display:none">
@@ -48,36 +66,47 @@
 
 <script>
 // ======= Full 2D canvas game: Bebek Manyun vs Zombi ======
-// Single-file, no external assets.
+// Enhanced, fixed and optimized copy (paste into your file)
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 let W = canvas.width, H = canvas.height;
+let GROUND_Y = H - 80;
 
 const overlay = document.getElementById('overlayStart');
 const startBtn = document.getElementById('startBtn');
 const scoreEl = document.getElementById('score');
 const hpEl = document.getElementById('hp');
+const hpBar = document.getElementById('hpBar');
+const waveEl = document.getElementById('wave');
 const touchControls = document.getElementById('touchControls');
 
 let running = false;
+let paused = false;
 let score = 0;
+let wave = 1;
 let spawnTimer = 0;
-let spawnInterval = 120; // frames
+let spawnInterval = 120;
 let entities = [];
+let particles = [];
 let keys = {};
+let highScore = parseInt(localStorage.getItem('bebekHighScore') || '0');
+
+const MAX_PARTICLES = 450;
 
 const player = {
   x: 120, y: 0, w: 60, h: 48,
-  vx: 0, vy: 0, speed: 3.6,
+  vx: 0, vy: 0, speed: 4.2,
   onGround: false,
   hp: 100,
-  attackCooldown: 0
+  maxHp: 100,
+  attackCooldown: 0,
+  invulnerable: 0,
+  facing: 1 // 1 = right, -1 = left
 };
 
 const GRAV = 0.6;
-const FRICTION = 0.92;
-const GROUND_Y = H - 80;
+const FRICTION = 0.88;
 
 function rand(min, max){return Math.random()*(max-min)+min}
 
@@ -87,177 +116,463 @@ function spawnZombie(){
     x: W + 60,
     y: GROUND_Y - 48,
     w: 52, h: 64,
-    vx: rand(-1.4, -0.9) - Math.min(0.6, score/500),
-    hp: 20 + Math.floor(score/50),
-    speedBase: 1.2
+    vx: rand(-1.6, -1.0) - Math.min(0.8, score/400),
+    hp: 20 + Math.floor(score/40) + wave * 5,
+    maxHp: 20 + Math.floor(score/40) + wave * 5,
+    speedBase: 1.2,
+    attackTimer: 0
   };
   entities.push(z);
 }
 
 function spawnBat(){
   const b = {
-    type: 'bat', x: W + 60, y: rand(120, GROUND_Y-200), w:40, h:30,
-    vx: rand(-2.2, -1.2), hp: 10
+    type: 'bat',
+    x: W + 60,
+    y: rand(120, GROUND_Y-200),
+    w:40, h:30,
+    vx: rand(-2.4, -1.6),
+    hp: 10 + wave * 2,
+    maxHp: 10 + wave * 2,
+    wobble: 0
   };
   entities.push(b);
 }
 
 function shoot(){
   if(player.attackCooldown>0) return;
-  player.attackCooldown = 18; // cooldown frames
-  const p = {type:'quack', x:player.x+player.w, y:player.y+18, vx:6, w:18, h:10, dmg:12};
+  player.attackCooldown = 15;
+  const p = {
+    type:'quack',
+    x:player.x + (player.facing > 0 ? player.w : -20),
+    y:player.y+18,
+    vx: 8 * player.facing,
+    w:20, h:12,
+    dmg:15 + Math.floor(wave/2)
+  };
   entities.push(p);
+  createParticles(p.x, p.y, 3, '#8be0ff');
+}
+
+function createParticles(x, y, count, color){
+  for(let i=0;i<count;i++){
+    particles.push({
+      x: x,
+      y: y,
+      vx: rand(-3, 3),
+      vy: rand(-4, -1),
+      life: 30,
+      maxLife: 30,
+      color: color || '#ffd54a',
+      size: rand(3, 8)
+    });
+  }
+  // Batasi total particles agar tidak overload
+  if(particles.length > MAX_PARTICLES) {
+    particles.splice(0, particles.length - MAX_PARTICLES);
+  }
 }
 
 function update(){
-  if(!running) return;
-  // player input
-  if(keys['ArrowLeft']||keys['a']) player.vx = Math.max(player.vx-0.6, -player.speed);
-  if(keys['ArrowRight']||keys['d']) player.vx = Math.min(player.vx+0.6, player.speed);
-  if(!(keys['ArrowLeft']||keys['a']||keys['ArrowRight']||keys['d'])) player.vx *= FRICTION;
-  if((keys['ArrowUp']||keys['w']) && player.onGround){ player.vy = -12; player.onGround=false; }
+  if(!running || paused) return;
+
+  // Player input
+  if(keys['ArrowLeft']||keys['a']){
+    player.vx = Math.max(player.vx-0.8, -player.speed);
+    player.facing = -1;
+  }
+  if(keys['ArrowRight']||keys['d']){
+    player.vx = Math.min(player.vx+0.8, player.speed);
+    player.facing = 1;
+  }
+  if(!(keys['ArrowLeft']||keys['a']||keys['ArrowRight']||keys['d'])) {
+    player.vx *= FRICTION;
+  }
+  if((keys['ArrowUp']||keys['w']) && player.onGround){
+    player.vy = -13;
+    player.onGround=false;
+  }
   if(keys[' ']||keys['Space']) shoot();
 
-  // physics
-  player.vy += GRAV; player.x += player.vx; player.y += player.vy;
-  if(player.y + player.h >= GROUND_Y){ player.y = GROUND_Y - player.h; player.vy = 0; player.onGround = true; }
-  if(player.x < 10) player.x = 10; if(player.x + player.w > W-10) player.x = W-10-player.w;
-  if(player.attackCooldown>0) player.attackCooldown--;
+  // Physics
+  player.vy += GRAV;
+  player.x += player.vx;
+  player.y += player.vy;
 
-  // spawn
+  if(player.y + player.h >= GROUND_Y){
+    player.y = GROUND_Y - player.h;
+    player.vy = 0;
+    player.onGround = true;
+  }
+  if(player.x < 10) player.x = 10;
+  if(player.x + player.w > W-10) player.x = W-10-player.w;
+  if(player.attackCooldown>0) player.attackCooldown--;
+  if(player.invulnerable>0) player.invulnerable--;
+
+  // Wave progression
+  if(score > wave * 150 && entities.filter(e=>e.type==='zombie'||e.type==='bat').length === 0){
+    wave++;
+    waveEl.textContent = wave;
+    spawnInterval = Math.max(30, 120 - wave * 8);
+  }
+
+  // Spawn enemies
   spawnTimer++;
   if(spawnTimer > spawnInterval){
     spawnTimer = 0;
-    if(Math.random() < Math.min(0.6, 0.2 + score/300)) spawnZombie();
-    if(Math.random() < 0.2 + Math.min(0.5, score/800)) spawnBat();
-    spawnInterval = Math.max(40, 120 - Math.floor(score/10));
+    const spawnChance = Math.min(0.7, 0.25 + score/250);
+    if(Math.random() < spawnChance) spawnZombie();
+    if(Math.random() < 0.15 + Math.min(0.45, score/600)) spawnBat();
   }
 
-  // update entities
+  // Update entities
   for(let i=entities.length-1;i>=0;i--){
     const e = entities[i];
-    if(e.type === 'zombie' || e.type==='bat'){
+
+    if(e.type === 'zombie'){
       e.x += e.vx;
-      // simple attack if close to player
-      if(e.x < player.x + player.w && e.x + e.w > player.x && e.y + e.h > player.y + 10){
-        // collision
-        player.hp -= 0.18; // continuous damage
+      e.attackTimer++;
+
+      // Attack player
+      if(e.x < player.x + player.w && e.x + e.w > player.x &&
+         e.y + e.h > player.y + 10 && e.attackTimer > 30 && player.invulnerable <= 0){
+        player.hp -= 5;
+        player.invulnerable = 30;
+        e.attackTimer = 0;
+        createParticles(player.x + player.w/2, player.y + player.h/2, 5, '#ff4444');
       }
+
       if(e.x + e.w < -40) entities.splice(i,1);
     }
+
+    if(e.type === 'bat'){
+      e.x += e.vx;
+      e.wobble += 0.15;
+      e.y += Math.sin(e.wobble) * 1.5;
+
+      // Attack player
+      if(e.x < player.x + player.w && e.x + e.w > player.x &&
+         e.y < player.y + player.h && e.y + e.h > player.y && player.invulnerable <= 0){
+        player.hp -= 3;
+        player.invulnerable = 25;
+        createParticles(player.x + player.w/2, player.y + player.h/2, 4, '#ff4444');
+      }
+
+      if(e.x + e.w < -40) entities.splice(i,1);
+    }
+
     if(e.type === 'quack'){
       e.x += e.vx;
-      // collision with enemies
+
+      // Collision with enemies
       for(let j=entities.length-1;j>=0;j--){
-        const t = entities[j]; if(t===e) continue; if(t.type==='zombie' || t.type==='bat'){
-          if(e.x < t.x + t.w && e.x + e.w > t.x && e.y < t.y + t.h && e.y + e.h > t.y){
-            t.hp -= e.dmg; // hit
-            // tiny knockback
-            t.x += 8;
-            // remove projectile
-            const idx = entities.indexOf(e); if(idx>=0) entities.splice(idx,1);
+        const t = entities[j];
+        if(t===e) continue;
+        if(t.type==='zombie' || t.type==='bat'){
+          if(e.x < t.x + t.w && e.x + e.w > t.x &&
+             e.y < t.y + t.h && e.y + e.h > t.y){
+            t.hp -= e.dmg;
+            t.x += 10 * Math.sign(e.vx); // knockback
+
+            createParticles(t.x + t.w/2, t.y + t.h/2, 6, '#22c55e');
+
+            const idx = entities.indexOf(e);
+            if(idx>=0) entities.splice(idx,1);
             break;
           }
         }
       }
-      if(e.x > W + 40) { const idx = entities.indexOf(e); if(idx>=0) entities.splice(idx,1); }
+
+      // Remove projectile if out of screen (left or right)
+      if(e.x < -80 || e.x > W + 80) {
+        const idx = entities.indexOf(e);
+        if(idx >= 0) entities.splice(idx, 1);
+      }
     }
 
-    // enemy death
+    // Enemy death
     if((e.type==='zombie' || e.type==='bat') && e.hp <= 0){
-      score += (e.type==='zombie') ? 25 : 12;
-      // spawn small particles / coins (visual)
+      const points = (e.type==='zombie') ? 30 : 15;
+      score += points;
+      createParticles(e.x + e.w/2, e.y + e.h/2, 12, '#ffd54a');
       entities.splice(i,1);
     }
   }
 
-  // lose condition
-  if(player.hp <= 0){ endGame(); }
+  // Update particles
+  for(let i=particles.length-1;i>=0;i--){
+    const p = particles[i];
+    p.x += p.vx;
+    p.y += p.vy;
+    p.vy += 0.3;
+    p.life--;
+    if(p.life <= 0) particles.splice(i,1);
+  }
 
-  // update UI
+  // Lose condition
+  if(player.hp <= 0){
+    endGame();
+  }
+
+  // Update UI
   scoreEl.textContent = Math.floor(score);
   hpEl.textContent = Math.max(0, Math.floor(player.hp));
+  hpBar.style.width = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
+
+  // HP bar color based on health
+  if(player.hp > 60){
+    hpBar.style.background = 'linear-gradient(90deg,#22c55e,#16a34a)';
+  } else if(player.hp > 30){
+    hpBar.style.background = 'linear-gradient(90deg,#eab308,#ca8a04)';
+  } else {
+    hpBar.style.background = 'linear-gradient(90deg,#ef4444,#dc2626)';
+  }
 }
 
 function draw(){
-  // background
+  // Clear and background
   ctx.clearRect(0,0,W,H);
 
-  // sky gradient
   const g = ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,'#cfefff'); g.addColorStop(1,'#eaf9ff');
-  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
+  g.addColorStop(0,'#cfefff');
+  g.addColorStop(1,'#eaf9ff');
+  ctx.fillStyle = g;
+  ctx.fillRect(0,0,W,H);
 
-  // clouds (simple)
-  for(let i=0;i<4;i++){
-    ctx.globalAlpha = 0.2; ctx.beginPath(); ctx.ellipse(100 + i*220 + (Date.now()%5000)/50,80,80,30,0,0,Math.PI*2); ctx.fillStyle='#ffffff'; ctx.fill(); ctx.globalAlpha = 1;
+  // Animated clouds
+  const cloudOffset = (Date.now() % 50000) / 100;
+  for(let i=0;i<5;i++){
+    ctx.globalAlpha = 0.25;
+    ctx.beginPath();
+    ctx.ellipse(100 + i*200 + cloudOffset, 80 + Math.sin(i) * 20, 90, 35, 0, 0, Math.PI*2);
+    ctx.fillStyle='#ffffff';
+    ctx.fill();
+    ctx.globalAlpha = 1;
   }
 
-  // ground
-  ctx.fillStyle = '#6b8f2f'; ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
-  ctx.fillStyle = '#4b6b1f'; for(let i=0;i<30;i++){ ctx.fillRect(i*60, GROUND_Y, 30, 6); }
+  // Ground
+  ctx.fillStyle = '#6b8f2f';
+  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
 
-  // player draw: bebek manyun (simple)
-  drawDuck(player.x, player.y, player.w, player.h);
+  // Grass details
+  ctx.fillStyle = '#5a7a28';
+  for(let i=0;i<20;i++){
+    ctx.fillRect(i*45 - (Date.now()/20)%45, GROUND_Y, 25, 4);
+  }
 
-  // entities
+  // Draw particles
+  for(const p of particles){
+    ctx.globalAlpha = p.life / p.maxLife;
+    ctx.fillStyle = p.color;
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  }
+
+  // Player (with invulnerability flash)
+  if(player.invulnerable <= 0 || Math.floor(Date.now()/100) % 2 === 0){
+    drawDuck(player.x, player.y, player.w, player.h, player.facing);
+  }
+
+  // Entities
   for(const e of entities){
     if(e.type === 'zombie') drawZombie(e.x, e.y, e.w, e.h);
     if(e.type === 'bat') drawBat(e.x, e.y, e.w, e.h);
     if(e.type === 'quack') drawQuack(e.x, e.y, e.w, e.h);
+
+    // Health bars for enemies
+    if(e.type === 'zombie' || e.type === 'bat'){
+      const hpPercent = e.hp / e.maxHp;
+      ctx.fillStyle = '#334155';
+      ctx.fillRect(e.x, e.y - 8, e.w, 4);
+      ctx.fillStyle = hpPercent > 0.5 ? '#22c55e' : hpPercent > 0.25 ? '#eab308' : '#ef4444';
+      ctx.fillRect(e.x, e.y - 8, e.w * hpPercent, 4);
+    }
+  }
+
+  // Pause indicator
+  if(paused){
+    ctx.fillStyle = 'rgba(0,0,0,0.6)';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 48px Inter';
+    ctx.textAlign = 'center';
+    ctx.fillText('PAUSE', W/2, H/2);
+    ctx.font = '18px Inter';
+    ctx.fillText('Tekan ESC untuk melanjutkan', W/2, H/2 + 40);
+    ctx.textAlign = 'left';
   }
 }
 
-function drawDuck(x,y,w,h){
-  // body
-  ctx.fillStyle = '#ffd54a'; ctx.beginPath(); ctx.ellipse(x + w*0.45, y + h*0.5, w*0.5, h*0.55, 0, 0, Math.PI*2); ctx.fill();
-  // beak
-  ctx.fillStyle = '#ff8a00'; ctx.beginPath(); ctx.moveTo(x+w, y+h*0.45); ctx.lineTo(x+w+16, y+h*0.5); ctx.lineTo(x+w, y+h*0.6); ctx.fill();
-  // eye
-  ctx.fillStyle = '#062b3a'; ctx.beginPath(); ctx.arc(x + w*0.3, y + h*0.35, 6,0,Math.PI*2); ctx.fill();
-  // sad mouth (manyun)
-  ctx.strokeStyle = '#5b3a00'; ctx.lineWidth=2; ctx.beginPath(); ctx.moveTo(x + w*0.25, y + h*0.68); ctx.quadraticCurveTo(x + w*0.45, y + h*0.78, x + w*0.65, y + h*0.68); ctx.stroke();
+function drawDuck(x,y,w,h,facing){
+  ctx.save();
+  ctx.translate(x + w/2, y + h/2);
+  ctx.scale(facing, 1);
+  ctx.translate(-(x + w/2), -(y + h/2));
+
+  // Body
+  ctx.fillStyle = '#ffd54a';
+  ctx.beginPath();
+  ctx.ellipse(x + w*0.45, y + h*0.5, w*0.5, h*0.55, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Wing
+  ctx.fillStyle = '#ffbf00';
+  ctx.beginPath();
+  ctx.ellipse(x + w*0.3, y + h*0.5, w*0.2, h*0.3, -0.3, 0, Math.PI*2);
+  ctx.fill();
+
+  // Beak
+  ctx.fillStyle = '#ff8a00';
+  ctx.beginPath();
+  ctx.moveTo(x+w*0.9, y+h*0.45);
+  ctx.lineTo(x+w*1.2, y+h*0.5);
+  ctx.lineTo(x+w*0.9, y+h*0.6);
+  ctx.fill();
+
+  // Eye
+  ctx.fillStyle = '#fff';
+  ctx.beginPath();
+  ctx.arc(x + w*0.35, y + h*0.35, 8, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#062b3a';
+  ctx.beginPath();
+  ctx.arc(x + w*0.35, y + h*0.35, 5, 0, Math.PI*2);
+  ctx.fill();
+
+  // Sad mouth (manyun)
+  ctx.strokeStyle = '#5b3a00';
+  ctx.lineWidth=3;
+  ctx.beginPath();
+  ctx.moveTo(x + w*0.3, y + h*0.7);
+  ctx.quadraticCurveTo(x + w*0.45, y + h*0.8, x + w*0.6, y + h*0.7);
+  ctx.stroke();
+
+  // Feet
+  ctx.fillStyle = '#ff8a00';
+  ctx.fillRect(x + w*0.25, y+h-4, 8, 4);
+  ctx.fillRect(x + w*0.55, y+h-4, 8, 4);
+
+  ctx.restore();
 }
 
 function drawZombie(x,y,w,h){
-  ctx.fillStyle = '#7bbf6f'; ctx.fillRect(x, y, w, h); // body
-  // head
-  ctx.fillStyle = '#6aa56a'; ctx.fillRect(x-6, y-24, w+12, 26);
-  // eyes
-  ctx.fillStyle = '#ffffff'; ctx.fillRect(x+8,y-16,8,8); ctx.fillRect(x+w-20,y-16,8,8);
-  ctx.fillStyle='#062b3a'; ctx.fillRect(x+10,y-14,4,4); ctx.fillRect(x+w-18,y-14,4,4);
+  ctx.fillStyle = '#7bbf6f';
+  ctx.fillRect(x+8, y+20, w-16, h-20);
+  ctx.fillStyle = '#6aa56a';
+  ctx.fillRect(x, y+25, 8, 25);
+  ctx.fillRect(x+w-8, y+25, 8, 25);
+  ctx.fillStyle = '#6aa56a';
+  ctx.fillRect(x+4, y, w-8, 24);
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(x+12,y+6,10,10);
+  ctx.fillRect(x+w-22,y+6,10,10);
+  ctx.fillStyle='#8b0000';
+  ctx.fillRect(x+15,y+9,4,4);
+  ctx.fillRect(x+w-19,y+9,4,4);
+  ctx.fillStyle = '#062b3a';
+  ctx.fillRect(x+w*0.3, y+18, w*0.4, 3);
 }
 
 function drawBat(x,y,w,h){
-  ctx.fillStyle = '#3b3b3b'; ctx.beginPath(); ctx.ellipse(x + w*0.5, y + h*0.5, w*0.8, h*0.8, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#2d2d2d';
+  ctx.beginPath();
+  ctx.ellipse(x + w*0.5, y + h*0.5, w*0.3, h*0.4, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#3b3b3b';
+  ctx.beginPath();
+  ctx.ellipse(x + w*0.15, y + h*0.5, w*0.35, h*0.3, -0.5, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.ellipse(x + w*0.85, y + h*0.5, w*0.35, h*0.3, 0.5, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle = '#ff0000';
+  ctx.beginPath();
+  ctx.arc(x + w*0.4, y + h*0.4, 3, 0, Math.PI*2);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(x + w*0.6, y + h*0.4, 3, 0, Math.PI*2);
+  ctx.fill();
 }
 
 function drawQuack(x,y,w,h){
-  ctx.fillStyle = '#8be0ff'; ctx.fillRect(x,y,w,h); ctx.fillStyle='#062b3a'; ctx.fillText('QU', x+2, y+8);
+  ctx.fillStyle = '#8be0ff';
+  ctx.beginPath();
+  ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle='#062b3a';
+  ctx.font = 'bold 10px Inter';
+  ctx.fillText('Q', x+5, y+9);
 }
 
-function loop(){ update(); draw(); if(running) requestAnimationFrame(loop); }
+function loop(){
+  update();
+  draw();
+  if(running) requestAnimationFrame(loop);
+}
 
 function startGame(){
-  // reset
-  running = true; score = 0; entities = []; player.hp = 100; player.x = 120; player.y = GROUND_Y - player.h; player.vx=0; player.vy=0; spawnTimer=0; spawnInterval=120;
-  overlay.style.display = 'none'; touchControls.style.display = /Mobi|Android/i.test(navigator.userAgent) ? 'flex' : 'none';
+  running = true;
+  paused = false;
+  score = 0;
+  wave = 1;
+  entities = [];
+  particles = [];
+  player.hp = 100;
+  player.x = 120;
+  player.y = GROUND_Y - player.h;
+  player.vx=0;
+  player.vy=0;
+  player.invulnerable = 0;
+  player.facing = 1;
+  spawnTimer=0;
+  spawnInterval=120;
+
+  overlay.style.display = 'none';
+  waveEl.textContent = wave;
+  touchControls.style.display = /Mobi|Android/i.test(navigator.userAgent) ? 'flex' : 'none';
   requestAnimationFrame(loop);
 }
 
 function endGame(){
-  running = false; overlay.style.display = 'flex';
-  overlay.querySelector('h1').textContent = 'Game Over';
-  overlay.querySelector('p').textContent = `Skor akhir: ${Math.floor(score)} — tekan Mainkan untuk coba lagi`;
+  running = false;
+
+  if(score > highScore){
+    highScore = score;
+    localStorage.setItem('bebekHighScore', highScore);
+  }
+
+  overlay.style.display = 'flex';
+  overlay.querySelector('h1').textContent = '☠️ Game Over!';
+  overlay.querySelector('p').innerHTML = `
+    <strong>Skor Akhir: ${Math.floor(score)}</strong><br>
+    Gelombang: ${wave}<br>
+    High Score: ${highScore}<br><br>
+    Tekan tombol untuk bermain lagi!
+  `;
 }
 
-// input handlers
-window.addEventListener('keydown', e=>{ keys[e.key] = true; });
-window.addEventListener('keyup', e=>{ keys[e.key] = false; });
+function togglePause(){
+  if(!running) return;
+  paused = !paused;
+  if(!paused) requestAnimationFrame(loop);
+}
+
+// Input handlers
+window.addEventListener('keydown', e=>{
+  keys[e.key] = true;
+  if(e.key === 'Escape') togglePause();
+  if(e.code === 'Space') e.preventDefault(); // Prevent page scroll
+});
+
+window.addEventListener('keyup', e=>{
+  keys[e.key] = false;
+});
 
 startBtn.addEventListener('click', ()=>{ startGame(); });
 
-// mobile touch
+// Mobile touch controls
 const leftBtn = document.getElementById('leftBtn');
 const rightBtn = document.getElementById('rightBtn');
 const jumpBtn = document.getElementById('jumpBtn');
@@ -266,21 +581,73 @@ const attackBtn = document.getElementById('attackBtn');
 function addTouch(btn, key){
   btn.addEventListener('touchstart', e=>{ e.preventDefault(); keys[key]=true; });
   btn.addEventListener('touchend', e=>{ e.preventDefault(); keys[key]=false; });
+  btn.addEventListener('touchcancel', e=>{ e.preventDefault(); keys[key]=false; });
 }
-addTouch(leftBtn,'a'); addTouch(rightBtn,'d'); addTouch(jumpBtn,'w');
-attackBtn.addEventListener('touchstart', e=>{ e.preventDefault(); shoot(); });
 
-// responsive canvas
+addTouch(leftBtn,'a');
+addTouch(rightBtn,'d');
+addTouch(jumpBtn,'w');
+
+attackBtn.addEventListener('touchstart', e=>{ e.preventDefault(); shoot(); });
+attackBtn.addEventListener('touchend', e=>{ e.preventDefault(); });
+
+// Responsive canvas
 function resizeCanvas(){
   const wrap = document.getElementById('gameWrap');
   const rect = wrap.getBoundingClientRect();
-  const scale = Math.min(rect.width / 900, 1);
-  canvas.style.transform = `scale(${scale})`; canvas.style.transformOrigin = 'left top';
-}
-window.addEventListener('resize', resizeCanvas); resizeCanvas();
+  const scale = Math.min(rect.width / 900, rect.height / 600, 1);
+  canvas.style.transform = `scale(${scale})`;
+  canvas.style.transformOrigin = 'center center';
 
-// small auto spawn for demo when idle
-setInterval(()=>{ if(!running && Math.random()<0.08) spawnZombie(); }, 1200);
+  // Jika kamu ingin komputasi fisika mengikuti ukuran tampilan,
+  // update W/H/GROUND_Y. Sekarang kita tetap gunakan koordinat desain (900x600)
+  // tetapi update GROUND_Y agar hitbox tetap sesuai visual transform.
+  // Perhitungan: ground berada pada posisi relatif 600 - 80 = 520 di desain.
+  // Skala visual:
+  W = 900;
+  H = 600;
+  GROUND_Y = H - 80;
+}
+
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+// Prevent context menu on touch controls
+document.querySelectorAll('.touch-button').forEach(btn => {
+  btn.addEventListener('contextmenu', e => e.preventDefault());
+});
+
+// Initial animation on start screen (demo)
+let demoTimer = 0;
+function demoAnimation(){
+  if(!running){
+    demoTimer++;
+    if(demoTimer > 90 && Math.random() < 0.12){
+      if(Math.random() < 0.5) spawnZombie();
+      else spawnBat();
+      demoTimer = 0;
+    }
+
+    // Update demo entities
+    for(let i=entities.length-1;i>=0;i--){
+      const e = entities[i];
+      e.x += e.vx;
+      if(e.wobble !== undefined) {
+        e.wobble += 0.15;
+        e.y += Math.sin(e.wobble) * 1.5;
+      }
+      if(e.x < -100) entities.splice(i,1);
+    }
+
+    draw();
+    requestAnimationFrame(demoAnimation);
+  }
+}
+
+demoAnimation();
+
+console.log('🦆 Bebek Manyun vs Zombi - Game loaded successfully!');
+console.log('High Score:', highScore);
 
 </script>
 </body>
