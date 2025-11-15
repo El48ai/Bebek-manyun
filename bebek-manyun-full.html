@@ -9,7 +9,16 @@
     html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
     body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--bg),#bfe9ff);padding:10px;}
     #gameWrap{width:100%;max-width:900px;height:600px;box-shadow:0 10px 30px rgba(0,0,0,0.25);border-radius:12px;overflow:hidden;background:white;position:relative}
-    canvas{display:block;background:linear-gradient(#cfefff, #eaf9ff);}
+    /* Perbaikan: canvas responsive dan terpusat (hapus transform scale yang menyebabkan offset) */
+    canvas{
+      display:block;
+      width:100%;        /* mengikuti lebar #gameWrap */
+      height:auto;       /* jaga rasio 900x600 */
+      max-width:900px;   /* jangan melebihi ukuran desain */
+      background:linear-gradient(#cfefff, #eaf9ff);
+      margin:0 auto;     /* pusatkan horisontal */
+      transform:none;
+    }
     .hud{position:absolute;left:12px;top:12px;color:var(--ui);font-weight:700;z-index:10;}
     .hud .score{font-size:20px}
     .hud .hp{margin-top:6px;font-size:14px}
@@ -70,7 +79,6 @@
 
 <script>
 // ======= Full 2D canvas game: Bebek Manyun vs Zombi ======
-// Fixed + sound + mute + performance guard
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -137,7 +145,7 @@ function playOsc({type='sine', freq=440, dur=0.12, vol=0.5, pan=0} = {}){
   o.frequency.value = freq;
   g.gain.value = 0;
   o.connect(g);
-  if(p){ g.connect(p); p.connect(masterGain); p.pan.value = pan; }
+  if(p){ g.connect(p); p.connect(masterGain); if(p.pan) p.pan.value = pan; }
   else { g.connect(masterGain); }
   const now = audioCtx.currentTime;
   g.gain.cancelScheduledValues(now);
@@ -692,14 +700,22 @@ attackBtn.addEventListener('touchend', e=>{ e.preventDefault(); });
 function resizeCanvas(){
   const wrap = document.getElementById('gameWrap');
   const rect = wrap.getBoundingClientRect();
-  const scale = Math.min(rect.width / 900, rect.height / 600, 1);
-  canvas.style.transform = `scale(${scale})`;
-  canvas.style.transformOrigin = 'center center';
 
-  // Keep logical coordinates stable (900x600), but ensure GROUND_Y stays consistent:
+  // Tampilkan kanvas memenuhi lebar wrapper tapi pertahankan rasio 900x600
+  const desiredWidth = Math.min(rect.width, 900); // tidak lebih dari 900
+  const desiredHeight = Math.round(desiredWidth * (600 / 900));
+
+  canvas.style.width = desiredWidth + 'px';
+  canvas.style.height = desiredHeight + 'px';
+
+  // Tetap gunakan koordinat logis 900x600 untuk game logic (tidak diubah)
   W = 900;
   H = 600;
   GROUND_Y = H - 80;
+
+  // Safety: pastikan player tidak keluar area logis
+  if (player.x + player.w > W) player.x = W - player.w - 10;
+  if (player.y + player.h > GROUND_Y) player.y = GROUND_Y - player.h;
 }
 
 window.addEventListener('resize', resizeCanvas);
