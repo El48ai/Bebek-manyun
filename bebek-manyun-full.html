@@ -3,50 +3,46 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Bebek Manyun vs Zombi</title>
+  <title>Bebek Manyun vs Zombi — Perbaikan Lengkap</title>
   <style>
     :root{--bg:#98d6ff;--ground:#6b8f2f;--ui:#0f172a}
-    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial}
-    body{display:flex;align-items:center;justify-content:center;background:linear-gradient(180deg,var(--bg),#bfe9ff);padding:10px;}
-    #gameWrap{width:100%;max-width:900px;height:600px;box-shadow:0 10px 30px rgba(0,0,0,0.25);border-radius:12px;overflow:hidden;background:white;position:relative}
-    /* Perbaikan: canvas responsive dan terpusat (hapus transform scale yang menyebabkan offset) */
+    html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial;background:var(--bg)}
+    body{display:flex;align-items:center;justify-content:center;padding:10px;}
+    #gameWrap{width:100%;max-width:900px;height:auto;box-shadow:0 10px 30px rgba(0,0,0,0.25);border-radius:12px;overflow:hidden;background:white;position:relative}
+    /* Canvas responsive dan terpusat */
     canvas{
       display:block;
-      width:100%;        /* mengikuti lebar #gameWrap */
-      height:auto;       /* jaga rasio 900x600 */
-      max-width:900px;   /* jangan melebihi ukuran desain */
+      width:100%;
+      height:auto;
+      max-width:900px;
       background:linear-gradient(#cfefff, #eaf9ff);
-      margin:0 auto;     /* pusatkan horisontal */
-      transform:none;
+      margin:0 auto;
     }
-    .hud{position:absolute;left:12px;top:12px;color:var(--ui);font-weight:700;z-index:10;}
+    .hud{position:absolute;left:12px;top:12px;color:var(--ui);font-weight:700;z-index:20}
     .hud .score{font-size:20px}
     .hud .hp{margin-top:6px;font-size:14px}
     .hud .wave{margin-top:4px;font-size:12px;color:#475569}
-    .controls{position:absolute;right:12px;top:12px;text-align:right;z-index:10;}
+    .controls{position:absolute;right:12px;top:12px;text-align:right;z-index:20}
     .controls small{display:block;color:#334155;font-size:11px}
-    .centerOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:100;}
-    .centerOverlay h1{color:#fff;margin:0;font-size:32px}
-    .centerOverlay p{color:#cbd5e1;margin:0;text-align:center;max-width:400px;line-height:1.5}
-    .btn{background:#0f172a;color:white;padding:12px 24px;border-radius:10px;border:none;font-weight:700;cursor:pointer;font-size:16px;transition:all 0.2s}
-    .btn:hover{background:#1e293b;transform:translateY(-2px)}
-    .btn:active{transform:translateY(0)}
-    .touch-controls{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:10}
-    .touch-button{width:64px;height:64px;border-radius:12px;background:rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;user-select:none;touch-action:none;border:2px solid rgba(255,255,255,0.3)}
-    .touch-button:active{background:rgba(0,0,0,0.4);transform:scale(0.95)}
+    .centerOverlay{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px;background:rgba(15,23,42,0.85);backdrop-filter:blur(4px);z-index:100}
+    .centerOverlay h1{color:#fff;margin:0;font-size:28px}
+    .centerOverlay p{color:#cbd5e1;margin:0;text-align:center;max-width:420px;line-height:1.5}
+    .btn{background:#0f172a;color:white;padding:12px 24px;border-radius:10px;border:none;font-weight:700;cursor:pointer;font-size:16px}
+    .touch-controls{position:absolute;left:12px;bottom:12px;display:flex;gap:8px;z-index:20}
+    .touch-button{width:64px;height:64px;border-radius:12px;background:rgba(0,0,0,0.2);display:flex;align-items:center;justify-content:center;font-weight:800;color:#fff;user-select:none;touch-action:none;border:2px solid rgba(255,255,255,0.18)}
+    .touch-button:active{transform:scale(0.96)}
     .hp-bar{width:150px;height:12px;background:#334155;border-radius:6px;overflow:hidden;margin-top:6px}
-    .hp-fill{height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width 0.3s}
-    .particle{position:absolute;pointer-events:none}
+    .hp-fill{height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width 0.2s}
     #muteBtn{margin-left:8px;padding:6px 10px;font-size:12px;border-radius:8px}
     @media (max-width:768px){
       .controls{display:none}
-      #gameWrap{height:500px}
     }
   </style>
 </head>
 <body>
   <div id="gameWrap">
     <canvas id="gameCanvas" width="900" height="600"></canvas>
+
     <div class="hud">
       <div class="score">Skor: <span id="score">0</span></div>
       <div class="hp">
@@ -55,16 +51,18 @@
       </div>
       <div class="wave">Gelombang: <span id="wave">1</span></div>
     </div>
-    <div class="controls">
-      <small>Kontrol: ← → / A D — Lompat: ↑ / W — Serang: Space</small>
+
+    <div class="controls" id="desktopControls">
+      <small>Kontrol: ← → / A D — Lompat: ↑ / W — Serang: Space (hold)</small>
       <small style="margin-top:4px">Tekan ESC untuk pause</small>
-      <div style="margin-top:6px">
+      <div style="margin-top:8px">
         <button id="muteBtn" class="btn" style="padding:6px 10px;font-size:12px">🔊</button>
       </div>
     </div>
+
     <div id="overlayStart" class="centerOverlay">
       <h1 style="margin:0">🦆 Bebek Manyun vs Zombi 🧟</h1>
-      <p style="margin:0">Lawan gerombolan zombi dan kelelawar! Bertahan selama mungkin dan kumpulkan skor tertinggi.</p>
+      <p style="margin:0">Tekan tombol <strong>Mulai Bermain</strong>. Gunakan Space (tahan) untuk menembak. Coba double-jump!</p>
       <button id="startBtn" class="btn">🎮 Mulai Bermain</button>
       <small style="color:#94a3b8">Cocok untuk desktop dan mobile</small>
     </div>
@@ -78,11 +76,11 @@
   </div>
 
 <script>
-// ======= Full 2D canvas game: Bebek Manyun vs Zombi ======
+// ==== Game penuh: responsive canvas, audio, double-jump, hold-fire, zebra-fix ====
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-let W = canvas.width, H = canvas.height;
+let W = 900, H = 600;            // logical size (game uses 900x600)
 let GROUND_Y = H - 80;
 
 const overlay = document.getElementById('overlayStart');
@@ -93,6 +91,7 @@ const hpBar = document.getElementById('hpBar');
 const waveEl = document.getElementById('wave');
 const touchControls = document.getElementById('touchControls');
 const muteBtn = document.getElementById('muteBtn');
+const attackBtn = document.getElementById('attackBtn');
 
 let running = false;
 let paused = false;
@@ -102,7 +101,8 @@ let spawnTimer = 0;
 let spawnInterval = 120;
 let entities = [];
 let particles = [];
-let keys = {};
+let keys = {};           // boolean map for held keys e.g. keys[' ']=true while holding Space
+let keysPressed = {};    // one-shot flags for actions (jump)
 let highScore = parseInt(localStorage.getItem('bebekHighScore') || '0');
 
 const MAX_PARTICLES = 450;
@@ -115,15 +115,14 @@ const player = {
   maxHp: 100,
   attackCooldown: 0,
   invulnerable: 0,
-  facing: 1 // 1 = right, -1 = left
+  facing: 1,
+  canDoubleJump: true
 };
 
 const GRAV = 0.6;
 const FRICTION = 0.88;
 
-//
-// --- Simple sound system (Web Audio API) ---
-//
+// ---------------- Audio (WebAudio) ----------------
 let audioCtx = null;
 let masterGain = null;
 let muted = false;
@@ -136,27 +135,25 @@ function initAudio(){
   masterGain.connect(audioCtx.destination);
 }
 
+// basic oscillators + noise
 function playOsc({type='sine', freq=440, dur=0.12, vol=0.5, pan=0} = {}){
   if(!audioCtx || muted) return;
   const o = audioCtx.createOscillator();
   const g = audioCtx.createGain();
   const p = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
-  o.type = type;
-  o.frequency.value = freq;
+  o.type = type; o.frequency.value = freq;
   g.gain.value = 0;
   o.connect(g);
   if(p){ g.connect(p); p.connect(masterGain); if(p.pan) p.pan.value = pan; }
-  else { g.connect(masterGain); }
+  else g.connect(masterGain);
   const now = audioCtx.currentTime;
-  g.gain.cancelScheduledValues(now);
   g.gain.setValueAtTime(0, now);
   g.gain.linearRampToValueAtTime(vol, now + 0.01);
   g.gain.exponentialRampToValueAtTime(0.001, now + dur);
-  o.start(now);
-  o.stop(now + dur + 0.02);
+  o.start(now); o.stop(now + dur + 0.03);
 }
 
-function playNoise({dur=0.08, vol=0.6, pan=0} = {}){
+function playNoise({dur=0.08, vol=0.6} = {}){
   if(!audioCtx || muted) return;
   const bufferSize = Math.floor(audioCtx.sampleRate * dur);
   const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
@@ -164,51 +161,75 @@ function playNoise({dur=0.08, vol=0.6, pan=0} = {}){
   for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * Math.exp(-i / (bufferSize*0.8));
   const src = audioCtx.createBufferSource();
   src.buffer = buffer;
-  const g = audioCtx.createGain();
-  g.gain.value = vol;
-  src.connect(g);
-  g.connect(masterGain);
+  const g = audioCtx.createGain(); g.gain.value = vol;
+  src.connect(g); g.connect(masterGain);
   src.start();
 }
 
+// sound wrapper
 function playSound(name){
   if(!audioCtx || muted) return;
   switch(name){
     case 'quack':
-      playOsc({type:'square', freq:600, dur:0.08, vol:0.18});
-      playOsc({type:'sine', freq:900, dur:0.12, vol:0.08});
+      playOsc({type:'square', freq:600, dur:0.06, vol:0.12});
+      playOsc({type:'sine', freq:900, dur:0.10, vol:0.06});
       break;
-    case 'shoot':
-      playOsc({type:'sawtooth', freq:320, dur:0.06, vol:0.12});
-      playNoise({dur:0.04, vol:0.06});
+    case 'gun':
+      playOsc({type:'square', freq:1200, dur:0.06, vol:0.28});
+      playNoise({dur:0.06, vol:0.14});
       break;
     case 'hit':
-      playOsc({type:'sine', freq:120, dur:0.18, vol:0.25});
-      playNoise({dur:0.06, vol:0.08});
+      playOsc({type:'sine', freq:120, dur:0.16, vol:0.22});
+      playNoise({dur:0.05, vol:0.06});
       break;
     case 'enemyDie':
-      playOsc({type:'triangle', freq:200, dur:0.22, vol:0.22});
-      playOsc({type:'sine', freq:380, dur:0.18, vol:0.12});
+      playOsc({type:'triangle', freq:200, dur:0.22, vol:0.18});
+      playOsc({type:'sine', freq:380, dur:0.16, vol:0.10});
       break;
     case 'gameOver':
-      playOsc({type:'square', freq:90, dur:0.6, vol:0.28});
+      playOsc({type:'square', freq:90, dur:0.6, vol:0.22});
       break;
-    default:
-      break;
+    default: break;
   }
 }
 
-muteBtn.addEventListener('click', ()=>{
-  muted = !muted;
-  muteBtn.textContent = muted ? '🔇' : '🔊';
-  if(masterGain) masterGain.gain.value = muted ? 0 : 0.9;
-});
+// ---------------- Zombie ambience loop ----------------
+let zombieAmbience = null;
+function startZombieAmbience(){
+  if(!audioCtx || muted) return;
+  if(zombieAmbience) return;
+  const osc = audioCtx.createOscillator(); osc.type='sine'; osc.frequency.value = 60 + Math.random()*20;
+  const noiseBuf = audioCtx.createBuffer(1, audioCtx.sampleRate*2, audioCtx.sampleRate);
+  const d = noiseBuf.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i] = (Math.random()*2-1) * Math.exp(-i/(d.length*0.4));
+  const noise = audioCtx.createBufferSource(); noise.buffer = noiseBuf; noise.loop=true;
+  const lowpass = audioCtx.createBiquadFilter(); lowpass.type='lowpass'; lowpass.frequency.value = 800;
+  const g1 = audioCtx.createGain(); g1.gain.value = 0.06;
+  const g2 = audioCtx.createGain(); g2.gain.value = 0.02;
+  osc.connect(g1); noise.connect(lowpass); lowpass.connect(g2);
+  const master = audioCtx.createGain(); master.gain.value = 0.0;
+  g1.connect(master); g2.connect(master); master.connect(masterGain || audioCtx.destination);
+  const now = audioCtx.currentTime;
+  master.gain.linearRampToValueAtTime(0.5, now + 1.2);
+  osc.start(); noise.start();
+  zombieAmbience = {osc, noise, master};
+}
+function stopZombieAmbience(){
+  if(!zombieAmbience) return;
+  const now = audioCtx.currentTime;
+  zombieAmbience.master.gain.cancelScheduledValues(now);
+  zombieAmbience.master.gain.setValueAtTime(zombieAmbience.master.gain.value, now);
+  zombieAmbience.master.gain.linearRampToValueAtTime(0.0, now + 0.8);
+  setTimeout(()=>{
+    try{ zombieAmbience.osc.stop(); zombieAmbience.noise.stop(); }catch(e){}
+    zombieAmbience = null;
+  }, 900);
+}
 
-//
-// Game logic
-//
-function rand(min, max){return Math.random()*(max-min)+min}
+// ---------------- Utility ----------------
+function rand(min, max){ return Math.random()*(max-min)+min; }
 
+// ---------------- Spawn functions ----------------
 function spawnZombie(){
   const z = {
     type: 'zombie',
@@ -218,9 +239,11 @@ function spawnZombie(){
     vx: rand(-1.6, -1.0) - Math.min(0.8, score/400),
     hp: 20 + Math.floor(score/40) + wave * 5,
     maxHp: 20 + Math.floor(score/40) + wave * 5,
-    attackTimer: 0
+    attackTimer: 0,
+    walkPhase: Math.random()*Math.PI*2
   };
   entities.push(z);
+  if(audioCtx && !zombieAmbience) startZombieAmbience();
 }
 
 function spawnBat(){
@@ -229,142 +252,160 @@ function spawnBat(){
     x: W + 60,
     y: rand(120, GROUND_Y-200),
     w:40, h:30,
-    vx: rand(-2.4, -1.6),
+    vx: rand(-2.6, -1.6),
     hp: 10 + wave * 2,
     maxHp: 10 + wave * 2,
-    wobble: 0
+    wobble: Math.random()*10
   };
   entities.push(b);
 }
 
+// ---------------- Shooting (hold to fire) ----------------
 function shoot(){
-  if(player.attackCooldown>0) return;
-  player.attackCooldown = 15;
+  if(player.attackCooldown > 0) return;
+  player.attackCooldown = 12;   // fire rate; kecilkan untuk tembakan lebih cepat
   const p = {
-    type:'quack',
-    x:player.x + (player.facing > 0 ? player.w : -20),
-    y:player.y+18,
-    vx: 8 * player.facing,
-    w:20, h:12,
-    dmg:15 + Math.floor(wave/2)
+    type: 'quack',
+    x: player.x + (player.facing > 0 ? player.w : -22),
+    y: player.y + 18,
+    vx: 10 * player.facing,
+    w: 20, h: 12,
+    dmg: 18 + Math.floor(wave/2)
   };
   entities.push(p);
-  createParticles(p.x, p.y, 3, '#8be0ff');
-  playSound('quack');
+  createParticles(p.x, p.y, 4, '#8be0ff');
+  playSound('gun'); // gunshot
 }
 
-function createParticles(x, y, count, color){
+// ---------------- Particles ----------------
+function createParticles(x,y,count,color){
   for(let i=0;i<count;i++){
     particles.push({
       x: x,
       y: y,
-      vx: rand(-3, 3),
-      vy: rand(-4, -1),
+      vx: rand(-3,3),
+      vy: rand(-4,-1),
       life: 30,
       maxLife: 30,
       color: color || '#ffd54a',
-      size: rand(3, 8)
+      size: rand(3,8)
     });
   }
-  if(particles.length > MAX_PARTICLES) {
-    particles.splice(0, particles.length - MAX_PARTICLES);
-  }
+  if(particles.length > MAX_PARTICLES) particles.splice(0, particles.length - MAX_PARTICLES);
 }
 
+// ---------------- Update loop ----------------
 function update(){
   if(!running || paused) return;
 
-  // Player input
-  if(keys['ArrowLeft']||keys['a']){
-    player.vx = Math.max(player.vx-0.8, -player.speed);
+  // movement input
+  if(keys['ArrowLeft'] || keys['a']){
+    player.vx = Math.max(player.vx - 0.85, -player.speed);
     player.facing = -1;
   }
-  if(keys['ArrowRight']||keys['d']){
-    player.vx = Math.min(player.vx+0.8, player.speed);
+  if(keys['ArrowRight'] || keys['d']){
+    player.vx = Math.min(player.vx + 0.85, player.speed);
     player.facing = 1;
   }
-  if(!(keys['ArrowLeft']||keys['a']||keys['ArrowRight']||keys['d'])) {
-    player.vx *= FRICTION;
-  }
-  if((keys['ArrowUp']||keys['w']) && player.onGround){
-    player.vy = -13;
-    player.onGround=false;
-  }
-  if(keys[' ']||keys['Space']) shoot();
+  if(!(keys['ArrowLeft']||keys['a']||keys['ArrowRight']||keys['d'])) player.vx *= FRICTION;
 
-  // Physics
+  // jump handling with one-shot press (double-jump support)
+  if(keysPressed['up']){
+    // consume the press
+    keysPressed['up'] = false;
+    if(player.onGround){
+      player.vy = -18; // stronger first jump
+      player.onGround = false;
+      player.canDoubleJump = true;
+      playSound('quack');
+    } else if(player.canDoubleJump){
+      player.vy = -15; // double jump slightly weaker
+      player.canDoubleJump = false;
+      createParticles(player.x + player.w/2, player.y + player.h/2, 8, '#8be0ff');
+      playSound('quack');
+    }
+  }
+
+  // hold-to-fire via keys[' '] (set by keyboard or touch)
+  if(keys[' ']){
+    shoot();
+  }
+
+  // physics
   player.vy += GRAV;
   player.x += player.vx;
   player.y += player.vy;
 
   if(player.y + player.h >= GROUND_Y){
+    const wasAir = !player.onGround;
     player.y = GROUND_Y - player.h;
     player.vy = 0;
     player.onGround = true;
+    if(wasAir) player.canDoubleJump = true;
   }
   if(player.x < 10) player.x = 10;
-  if(player.x + player.w > W-10) player.x = W-10-player.w;
+  if(player.x + player.w > W - 10) player.x = W - 10 - player.w;
   if(player.attackCooldown>0) player.attackCooldown--;
   if(player.invulnerable>0) player.invulnerable--;
 
-  // Wave progression
+  // wave progression
   if(score > wave * 150 && entities.filter(e=>e.type==='zombie'||e.type==='bat').length === 0){
     wave++;
     waveEl.textContent = wave;
-    spawnInterval = Math.max(30, 120 - wave * 8);
+    spawnInterval = Math.max(28, 120 - wave * 8);
   }
 
-  // Spawn enemies
+  // spawn
   spawnTimer++;
   if(spawnTimer > spawnInterval){
     spawnTimer = 0;
-    const spawnChance = Math.min(0.7, 0.25 + score/250);
-    if(Math.random() < spawnChance) spawnZombie();
-    if(Math.random() < 0.15 + Math.min(0.45, score/600)) spawnBat();
+    const sc = Math.min(0.72, 0.25 + score/260);
+    if(Math.random() < sc) spawnZombie();
+    if(Math.random() < 0.15 + Math.min(0.45, score/520)) spawnBat();
   }
 
-  // Update entities
+  // update entities
   for(let i=entities.length-1;i>=0;i--){
     const e = entities[i];
 
     if(e.type === 'zombie'){
       e.x += e.vx;
+      e.walkPhase += 0.08 * Math.abs(e.vx) * 1.4;
       e.attackTimer++;
 
-      // Attack player
+      // bite attack
       if(e.x < player.x + player.w && e.x + e.w > player.x &&
          e.y + e.h > player.y + 10 && e.attackTimer > 30 && player.invulnerable <= 0){
-        player.hp -= 5;
-        player.invulnerable = 30;
+        player.hp -= 6;
+        player.invulnerable = 28;
         e.attackTimer = 0;
-        createParticles(player.x + player.w/2, player.y + player.h/2, 5, '#ff4444');
+        createParticles(player.x + player.w/2, player.y + player.h/2, 6, '#ff4444');
         playSound('hit');
       }
 
-      if(e.x + e.w < -40) entities.splice(i,1);
+      if(e.x + e.w < -60) entities.splice(i,1);
     }
 
     if(e.type === 'bat'){
       e.x += e.vx;
-      e.wobble += 0.15;
-      e.y += Math.sin(e.wobble) * 1.5;
+      e.wobble += 0.18;
+      e.y += Math.sin(e.wobble) * 1.6;
 
-      // Attack player
       if(e.x < player.x + player.w && e.x + e.w > player.x &&
          e.y < player.y + player.h && e.y + e.h > player.y && player.invulnerable <= 0){
         player.hp -= 3;
-        player.invulnerable = 25;
+        player.invulnerable = 26;
         createParticles(player.x + player.w/2, player.y + player.h/2, 4, '#ff4444');
         playSound('hit');
       }
 
-      if(e.x + e.w < -40) entities.splice(i,1);
+      if(e.x + e.w < -60) entities.splice(i,1);
     }
 
     if(e.type === 'quack'){
       e.x += e.vx;
 
-      // Collision with enemies
+      // collision with enemies
       for(let j=entities.length-1;j>=0;j--){
         const t = entities[j];
         if(t===e) continue;
@@ -372,242 +413,201 @@ function update(){
           if(e.x < t.x + t.w && e.x + e.w > t.x &&
              e.y < t.y + t.h && e.y + e.h > t.y){
             t.hp -= e.dmg;
-            t.x += 10 * Math.sign(e.vx); // knockback
-
-            createParticles(t.x + t.w/2, t.y + t.h/2, 6, '#22c55e');
-
-            const idx = entities.indexOf(e);
-            if(idx>=0) entities.splice(idx,1);
+            t.x += 10 * Math.sign(e.vx);
+            createParticles(t.x + t.w/2, t.y + t.h/2, 8, '#22c55e');
+            const idx = entities.indexOf(e); if(idx>=0) entities.splice(idx,1);
             break;
           }
         }
       }
 
-      // Remove projectile if out of screen (left or right)
-      if(e.x < -80 || e.x > W + 80) {
-        const idx = entities.indexOf(e);
-        if(idx >= 0) entities.splice(idx, 1);
+      // clear projectile when offscreen (explicit left/right)
+      if(e.x < -100 || e.x > W + 100){
+        const idx = entities.indexOf(e); if(idx>=0) entities.splice(idx,1);
       }
     }
 
-    // Enemy death
+    // death
     if((e.type==='zombie' || e.type==='bat') && e.hp <= 0){
-      const points = (e.type==='zombie') ? 30 : 15;
-      score += points;
-      createParticles(e.x + e.w/2, e.y + e.h/2, 12, '#ffd54a');
+      const pts = (e.type==='zombie')? 35 : 16;
+      score += pts;
+      createParticles(e.x + e.w/2, e.y + e.h/2, 14, '#ffd54a');
       playSound('enemyDie');
       entities.splice(i,1);
     }
   }
 
-  // Update particles
+  // stop ambience if no zombie alive
+  if(!entities.some(x=>x.type==='zombie') && zombieAmbience) stopZombieAmbience();
+
+  // update particles
   for(let i=particles.length-1;i>=0;i--){
     const p = particles[i];
-    p.x += p.vx;
-    p.y += p.vy;
-    p.vy += 0.3;
-    p.life--;
+    p.x += p.vx; p.y += p.vy; p.vy += 0.28; p.life--;
     if(p.life <= 0) particles.splice(i,1);
   }
 
-  // Lose condition
+  // lose
   if(player.hp <= 0){
     playSound('gameOver');
     endGame();
   }
 
-  // Update UI
+  // update UI
   scoreEl.textContent = Math.floor(score);
   hpEl.textContent = Math.max(0, Math.floor(player.hp));
   hpBar.style.width = Math.max(0, (player.hp / player.maxHp) * 100) + '%';
-
-  // HP bar color based on health
-  if(player.hp > 60){
-    hpBar.style.background = 'linear-gradient(90deg,#22c55e,#16a34a)';
-  } else if(player.hp > 30){
-    hpBar.style.background = 'linear-gradient(90deg,#eab308,#ca8a04)';
-  } else {
-    hpBar.style.background = 'linear-gradient(90deg,#ef4444,#dc2626)';
-  }
+  if(player.hp > 60) hpBar.style.background = 'linear-gradient(90deg,#22c55e,#16a34a)';
+  else if(player.hp > 30) hpBar.style.background = 'linear-gradient(90deg,#eab308,#ca8a04)';
+  else hpBar.style.background = 'linear-gradient(90deg,#ef4444,#dc2626)';
 }
 
+// ---------------- Draw loop ----------------
 function draw(){
-  // Clear and background
+  // clear logical canvas
   ctx.clearRect(0,0,W,H);
 
+  // sky bg
   const g = ctx.createLinearGradient(0,0,0,H);
-  g.addColorStop(0,'#cfefff');
-  g.addColorStop(1,'#eaf9ff');
-  ctx.fillStyle = g;
-  ctx.fillRect(0,0,W,H);
+  g.addColorStop(0,'#cfefff'); g.addColorStop(1,'#eaf9ff');
+  ctx.fillStyle = g; ctx.fillRect(0,0,W,H);
 
-  // Animated clouds
-  const cloudOffset = (Date.now() % 50000) / 100;
+  // clouds
+  const cloudOffset = (Date.now() % 60000) / 120;
   for(let i=0;i<5;i++){
-    ctx.globalAlpha = 0.25;
+    ctx.globalAlpha = 0.22;
     ctx.beginPath();
-    ctx.ellipse(100 + i*200 + cloudOffset, 80 + Math.sin(i) * 20, 90, 35, 0, 0, Math.PI*2);
-    ctx.fillStyle='#ffffff';
-    ctx.fill();
-    ctx.globalAlpha = 1;
+    ctx.ellipse(100 + i*200 + cloudOffset, 80 + Math.sin(i)*18, 92, 36, 0, 0, Math.PI*2);
+    ctx.fillStyle='#ffffff'; ctx.fill(); ctx.globalAlpha = 1;
   }
 
-  // Ground
-  ctx.fillStyle = '#6b8f2f';
-  ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
-
-  // Grass details
+  // ground
+  ctx.fillStyle = '#6b8f2f'; ctx.fillRect(0, GROUND_Y, W, H - GROUND_Y);
   ctx.fillStyle = '#5a7a28';
-  for(let i=0;i<20;i++){
-    ctx.fillRect(i*45 - (Date.now()/20)%45, GROUND_Y, 25, 4);
-  }
+  for(let i=0;i<20;i++) ctx.fillRect(i*45 - (Date.now()/20)%45, GROUND_Y, 25, 4);
 
-  // Draw particles
+  // particles
   for(const p of particles){
     ctx.globalAlpha = p.life / p.maxLife;
-    ctx.fillStyle = p.color;
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, p.size, 0, Math.PI*2);
-    ctx.fill();
+    ctx.fillStyle = p.color; ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI*2); ctx.fill();
     ctx.globalAlpha = 1;
   }
 
-  // Player (with invulnerability flash)
+  // player draw with invulnerable flash
   if(player.invulnerable <= 0 || Math.floor(Date.now()/100) % 2 === 0){
     drawDuck(player.x, player.y, player.w, player.h, player.facing);
   }
 
-  // Entities
+  // entities
   for(const e of entities){
-    if(e.type === 'zombie') drawZombie(e.x, e.y, e.w, e.h);
+    if(e.type === 'zombie') drawZombie(e.x, e.y, e.w, e.h, e.walkPhase);
     if(e.type === 'bat') drawBat(e.x, e.y, e.w, e.h);
     if(e.type === 'quack') drawQuack(e.x, e.y, e.w, e.h);
 
-    // Health bars for enemies
+    // hp bars
     if(e.type === 'zombie' || e.type === 'bat'){
-      const hpPercent = e.hp / e.maxHp;
+      const hpPct = Math.max(0, e.hp / (e.maxHp || 1));
       ctx.fillStyle = '#334155';
       ctx.fillRect(e.x, e.y - 8, e.w, 4);
-      ctx.fillStyle = hpPercent > 0.5 ? '#22c55e' : hpPercent > 0.25 ? '#eab308' : '#ef4444';
-      ctx.fillRect(e.x, e.y - 8, e.w * hpPercent, 4);
+      ctx.fillStyle = hpPct > 0.5 ? '#22c55e' : hpPct > 0.25 ? '#eab308' : '#ef4444';
+      ctx.fillRect(e.x, e.y - 8, e.w * hpPct, 4);
     }
   }
 
-  // Pause indicator
+  // pause overlay text
   if(paused){
-    ctx.fillStyle = 'rgba(0,0,0,0.6)';
-    ctx.fillRect(0,0,W,H);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 48px Inter';
-    ctx.textAlign = 'center';
-    ctx.fillText('PAUSE', W/2, H/2);
-    ctx.font = '18px Inter';
-    ctx.fillText('Tekan ESC untuk melanjutkan', W/2, H/2 + 40);
-    ctx.textAlign = 'left';
+    ctx.fillStyle = 'rgba(0,0,0,0.6)'; ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#fff'; ctx.font = 'bold 48px Inter'; ctx.textAlign = 'center';
+    ctx.fillText('PAUSE', W/2, H/2); ctx.font='18px Inter';
+    ctx.fillText('Tekan ESC untuk melanjutkan', W/2, H/2 + 40); ctx.textAlign = 'left';
   }
 }
 
+// ---------------- Drawing helpers (beak, zombie, bat, projectile) ----------------
 function drawDuck(x,y,w,h,facing){
   ctx.save();
   ctx.translate(x + w/2, y + h/2);
-  ctx.scale(facing, 1);
+  ctx.scale(facing,1);
   ctx.translate(-(x + w/2), -(y + h/2));
 
-  // Body
-  ctx.fillStyle = '#ffd54a';
-  ctx.beginPath();
-  ctx.ellipse(x + w*0.45, y + h*0.5, w*0.5, h*0.55, 0, 0, Math.PI*2);
-  ctx.fill();
+  // body
+  const bodyX = x + w*0.45, bodyY = y + h*0.5;
+  ctx.beginPath(); ctx.fillStyle = '#ffd754';
+  ctx.ellipse(bodyX, bodyY, w*0.45, h*0.55, 0, 0, Math.PI*2); ctx.fill();
 
-  // Wing
-  ctx.fillStyle = '#ffbf00';
-  ctx.beginPath();
-  ctx.ellipse(x + w*0.3, y + h*0.5, w*0.2, h*0.3, -0.3, 0, Math.PI*2);
-  ctx.fill();
+  // shading
+  ctx.beginPath(); ctx.fillStyle='rgba(0,0,0,0.06)';
+  ctx.ellipse(bodyX - 8, bodyY + 4, w*0.32, h*0.35, 0, 0, Math.PI*2); ctx.fill();
 
-  // Beak
-  ctx.fillStyle = '#ff8a00';
-  ctx.beginPath();
-  ctx.moveTo(x+w*0.9, y+h*0.45);
-  ctx.lineTo(x+w*1.2, y+h*0.5);
-  ctx.lineTo(x+w*0.9, y+h*0.6);
-  ctx.fill();
+  // wing
+  ctx.fillStyle = '#ffcc33'; ctx.beginPath(); ctx.ellipse(x + w*0.25, y + h*0.5, w*0.18, h*0.28, -0.3, 0, Math.PI*2); ctx.fill();
 
-  // Eye
-  ctx.fillStyle = '#fff';
-  ctx.beginPath();
-  ctx.arc(x + w*0.35, y + h*0.35, 8, 0, Math.PI*2);
-  ctx.fill();
-  ctx.fillStyle = '#062b3a';
-  ctx.beginPath();
-  ctx.arc(x + w*0.35, y + h*0.35, 5, 0, Math.PI*2);
-  ctx.fill();
+  // head
+  ctx.fillStyle = '#ffd754'; ctx.beginPath(); ctx.arc(x + w*0.4, y + h*0.28, w*0.22, 0, Math.PI*2); ctx.fill();
 
-  // Sad mouth (manyun)
-  ctx.strokeStyle = '#5b3a00';
-  ctx.lineWidth=3;
-  ctx.beginPath();
-  ctx.moveTo(x + w*0.3, y + h*0.7);
-  ctx.quadraticCurveTo(x + w*0.45, y + h*0.8, x + w*0.6, y + h*0.7);
-  ctx.stroke();
+  // eye
+  ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(x + w*0.33, y + h*0.25, 7,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#052022'; ctx.beginPath(); ctx.arc(x + w*0.33, y + h*0.25, 4,0,Math.PI*2); ctx.fill();
 
-  // Feet
-  ctx.fillStyle = '#ff8a00';
-  ctx.fillRect(x + w*0.25, y+h-4, 8, 4);
-  ctx.fillRect(x + w*0.55, y+h-4, 8, 4);
+  // sad mouth
+  ctx.strokeStyle = '#5b3a00'; ctx.lineWidth=2; ctx.beginPath();
+  ctx.moveTo(x + w*0.28, y + h*0.35); ctx.quadraticCurveTo(x + w*0.33, y + h*0.40, x + w*0.40, y + h*0.35); ctx.stroke();
+
+  // feet
+  ctx.fillStyle = '#ff8a00'; ctx.fillRect(x + w*0.28, y+h-6, 10, 4); ctx.fillRect(x + w*0.54, y+h-6, 10, 4);
+
+  // weapon (stylized AK)
+  ctx.save();
+  const gunX = x + w*0.62; const gunY = y + h*0.45;
+  ctx.translate(gunX, gunY);
+  ctx.rotate(-0.18);
+  ctx.fillStyle = '#333'; ctx.fillRect(-10, -6, 70, 10); // body
+  ctx.fillStyle = '#222'; ctx.beginPath(); ctx.moveTo(20, -6); ctx.lineTo(34, -6); ctx.lineTo(34, 8); ctx.lineTo(20, 8); ctx.closePath(); ctx.fill(); // mag
+  ctx.fillStyle = '#111'; ctx.fillRect(58, -2, 28, 4); // barrel
+  ctx.fillStyle = '#2b2b2b'; ctx.fillRect(6, 6, 10, 18); // grip
+  ctx.restore();
 
   ctx.restore();
 }
 
-function drawZombie(x,y,w,h){
-  ctx.fillStyle = '#7bbf6f';
-  ctx.fillRect(x+8, y+20, w-16, h-20);
-  ctx.fillStyle = '#6aa56a';
-  ctx.fillRect(x, y+25, 8, 25);
-  ctx.fillRect(x+w-8, y+25, 8, 25);
-  ctx.fillStyle = '#6aa56a';
-  ctx.fillRect(x+4, y, w-8, 24);
-  ctx.fillStyle = '#ffffff';
-  ctx.fillRect(x+12,y+6,10,10);
-  ctx.fillRect(x+w-22,y+6,10,10);
-  ctx.fillStyle='#8b0000';
-  ctx.fillRect(x+15,y+9,4,4);
-  ctx.fillRect(x+w-19,y+9,4,4);
-  ctx.fillStyle = '#062b3a';
-  ctx.fillRect(x+w*0.3, y+18, w*0.4, 3);
+function drawZombie(x,y,w,h,phase=0){
+  ctx.save();
+  ctx.translate(x, y);
+  // body & head
+  ctx.fillStyle = '#6aa56a'; ctx.fillRect(8,20,w-16,h-20); ctx.fillRect(4,0,w-8,24);
+  // swing
+  const swing = Math.sin(phase) * 6;
+  ctx.fillStyle = '#5c9f5b';
+  ctx.fillRect(-2, 28 + swing*0.6, 8, 25); // left arm
+  ctx.fillRect(w-6, 28 - swing*0.6, 8, 25); // right arm
+  // eyes & mouth
+  ctx.fillStyle = '#fff'; ctx.fillRect(12,6,10,10); ctx.fillRect(w-22,6,10,10);
+  ctx.fillStyle = '#8b0000'; ctx.fillRect(15,9,4,4); ctx.fillRect(w-19,9,4,4);
+  ctx.fillStyle = '#062b3a'; ctx.fillRect(w*0.3, 18, w*0.4, 3);
+  // legs
+  const legShift = Math.sin(phase) * 4;
+  ctx.fillRect(w*0.2, h-10 + legShift, 10, 12);
+  ctx.fillRect(w*0.6, h-10 - legShift, 10, 12);
+  ctx.restore();
 }
 
 function drawBat(x,y,w,h){
-  ctx.fillStyle = '#2d2d2d';
-  ctx.beginPath();
-  ctx.ellipse(x + w*0.5, y + h*0.5, w*0.3, h*0.4, 0, 0, Math.PI*2);
-  ctx.fill();
-  ctx.fillStyle = '#3b3b3b';
-  ctx.beginPath();
-  ctx.ellipse(x + w*0.15, y + h*0.5, w*0.35, h*0.3, -0.5, 0, Math.PI*2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.ellipse(x + w*0.85, y + h*0.5, w*0.35, h*0.3, 0.5, 0, Math.PI*2);
-  ctx.fill();
-  ctx.fillStyle = '#ff0000';
-  ctx.beginPath();
-  ctx.arc(x + w*0.4, y + h*0.4, 3, 0, Math.PI*2);
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(x + w*0.6, y + h*0.4, 3, 0, Math.PI*2);
-  ctx.fill();
+  ctx.save();
+  ctx.translate(x,y);
+  ctx.fillStyle = '#2d2d2d'; ctx.beginPath(); ctx.ellipse(w*0.5, h*0.5, w*0.3, h*0.4, 0,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#3b3b3b'; ctx.beginPath(); ctx.ellipse(w*0.15, h*0.5, w*0.35, h*0.3, -0.5,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(w*0.85, h*0.5, w*0.35, h*0.3, 0.5,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle = '#ff0000'; ctx.beginPath(); ctx.arc(w*0.4, h*0.4, 3,0,Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(w*0.6, h*0.4, 3,0,Math.PI*2); ctx.fill();
+  ctx.restore();
 }
 
 function drawQuack(x,y,w,h){
-  ctx.fillStyle = '#8be0ff';
-  ctx.beginPath();
-  ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI*2);
-  ctx.fill();
-  ctx.fillStyle='#062b3a';
-  ctx.font = 'bold 10px Inter';
-  ctx.fillText('Q', x+5, y+9);
+  ctx.fillStyle = '#8be0ff'; ctx.beginPath(); ctx.ellipse(x + w/2, y + h/2, w/2, h/2, 0, 0, Math.PI*2); ctx.fill();
+  ctx.fillStyle='#062b3a'; ctx.font='bold 10px Inter'; ctx.fillText('Q', x+5, y+9);
 }
 
+// ---------------- Game loop management ----------------
 function loop(){
   update();
   draw();
@@ -617,147 +617,117 @@ function loop(){
 function startGame(){
   initAudio();
   if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-
-  running = true;
-  paused = false;
-  score = 0;
-  wave = 1;
-  entities = [];
-  particles = [];
-  player.hp = 100;
-  player.x = 120;
-  player.y = GROUND_Y - player.h;
-  player.vx=0;
-  player.vy=0;
-  player.invulnerable = 0;
-  player.facing = 1;
-  spawnTimer=0;
-  spawnInterval=120;
-
+  running = true; paused = false;
+  score = 0; wave = 1; entities = []; particles = [];
+  player.hp = 100; player.x = 120; player.y = GROUND_Y - player.h; player.vx=0; player.vy=0;
+  player.invulnerable = 0; player.facing = 1; player.canDoubleJump = true;
+  spawnTimer = 0; spawnInterval = 120;
   overlay.style.display = 'none';
-  waveEl.textContent = wave;
   touchControls.style.display = /Mobi|Android/i.test(navigator.userAgent) ? 'flex' : 'none';
   requestAnimationFrame(loop);
 }
 
 function endGame(){
   running = false;
-
-  if(score > highScore){
-    highScore = score;
-    localStorage.setItem('bebekHighScore', highScore);
-  }
-
+  if(score > highScore){ highScore = score; localStorage.setItem('bebekHighScore', highScore); }
   overlay.style.display = 'flex';
   overlay.querySelector('h1').textContent = '☠️ Game Over!';
-  overlay.querySelector('p').innerHTML = `
-    <strong>Skor Akhir: ${Math.floor(score)}</strong><br>
-    Gelombang: ${wave}<br>
-    High Score: ${highScore}<br><br>
-    Tekan tombol untuk bermain lagi!
-  `;
+  overlay.querySelector('p').innerHTML = `<strong>Skor Akhir: ${Math.floor(score)}</strong><br>Gelombang: ${wave}<br>High Score: ${highScore}<br><br>Tekan tombol untuk bermain lagi!`;
 }
 
-function togglePause(){
-  if(!running) return;
-  paused = !paused;
-  if(!paused) requestAnimationFrame(loop);
-}
-
-// Input handlers
+// ---------------- Input handling (hold fire + single-press jump) ----------------
+// keyboard
 window.addEventListener('keydown', e=>{
+  // Space hold (prevent page scroll)
+  if(e.code === 'Space'){ e.preventDefault(); keys[' '] = true; }
+  // one-shot jump
+  if(e.key === 'ArrowUp' || e.key === 'w'){ keysPressed['up'] = true; }
+  // movement
   keys[e.key] = true;
   if(e.key === 'Escape') togglePause();
-  if(e.code === 'Space') e.preventDefault(); // Prevent page scroll
 });
 
 window.addEventListener('keyup', e=>{
+  if(e.code === 'Space'){ keys[' '] = false; }
   keys[e.key] = false;
 });
 
-startBtn.addEventListener('click', ()=>{ startGame(); });
+// mouse / pointer + touch for attack button (hold)
+function startFiring(){ keys[' '] = true; }
+function stopFiring(){ keys[' '] = false; }
 
-// Mobile touch controls
-const leftBtn = document.getElementById('leftBtn');
-const rightBtn = document.getElementById('rightBtn');
-const jumpBtn = document.getElementById('jumpBtn');
-const attackBtn = document.getElementById('attackBtn');
+// attackBtn listeners (touch + mouse + pointer)
+attackBtn.addEventListener('touchstart', e=>{ e.preventDefault(); startFiring(); });
+attackBtn.addEventListener('touchend', e=>{ e.preventDefault(); stopFiring(); });
+attackBtn.addEventListener('touchcancel', e=>{ e.preventDefault(); stopFiring(); });
+attackBtn.addEventListener('pointerdown', e=>{ e.preventDefault(); startFiring(); });
+window.addEventListener('pointerup', e=>{ stopFiring(); });
 
-function addTouch(btn, key){
-  btn.addEventListener('touchstart', e=>{ e.preventDefault(); keys[key]=true; });
-  btn.addEventListener('touchend', e=>{ e.preventDefault(); keys[key]=false; });
-  btn.addEventListener('touchcancel', e=>{ e.preventDefault(); keys[key]=false; });
+// touch directional buttons (left/jump/right)
+function addTouch(btn, key, isOneShot=false){
+  btn.addEventListener('touchstart', e=>{ e.preventDefault(); if(isOneShot) keysPressed[key]=true; else keys[key]=true; });
+  btn.addEventListener('touchend', e=>{ e.preventDefault(); if(!isOneShot) keys[key]=false; });
+  btn.addEventListener('touchcancel', e=>{ e.preventDefault(); if(!isOneShot) keys[key]=false; });
 }
+addTouch(document.getElementById('leftBtn'), 'ArrowLeft');
+addTouch(document.getElementById('rightBtn'), 'ArrowRight');
+addTouch(document.getElementById('jumpBtn'), 'up', true);
 
-addTouch(leftBtn,'a');
-addTouch(rightBtn,'d');
-addTouch(jumpBtn,'w');
+// mute toggle
+muteBtn.addEventListener('click', ()=>{
+  muted = !muted;
+  muteBtn.textContent = muted ? '🔇' : '🔊';
+  if(masterGain) masterGain.gain.value = muted ? 0 : 0.9;
+});
 
-attackBtn.addEventListener('touchstart', e=>{ e.preventDefault(); shoot(); });
-attackBtn.addEventListener('touchend', e=>{ e.preventDefault(); });
-
-// Responsive canvas
+// ---------------- Responsive canvas sizing ----------------
 function resizeCanvas(){
   const wrap = document.getElementById('gameWrap');
   const rect = wrap.getBoundingClientRect();
-
-  // Tampilkan kanvas memenuhi lebar wrapper tapi pertahankan rasio 900x600
-  const desiredWidth = Math.min(rect.width, 900); // tidak lebih dari 900
+  const desiredWidth = Math.min(rect.width, 900);
   const desiredHeight = Math.round(desiredWidth * (600 / 900));
-
   canvas.style.width = desiredWidth + 'px';
   canvas.style.height = desiredHeight + 'px';
-
-  // Tetap gunakan koordinat logis 900x600 untuk game logic (tidak diubah)
-  W = 900;
-  H = 600;
-  GROUND_Y = H - 80;
-
-  // Safety: pastikan player tidak keluar area logis
-  if (player.x + player.w > W) player.x = W - player.w - 10;
-  if (player.y + player.h > GROUND_Y) player.y = GROUND_Y - player.h;
+  // logical coords remain 900x600
+  W = 900; H = 600; GROUND_Y = H - 80;
+  if(player.x + player.w > W) player.x = W - player.w - 10;
+  if(player.y + player.h > GROUND_Y) player.y = GROUND_Y - player.h;
 }
-
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-// Prevent context menu on touch controls
-document.querySelectorAll('.touch-button').forEach(btn => {
-  btn.addEventListener('contextmenu', e => e.preventDefault());
-});
+// prevent context menu on touch buttons
+document.querySelectorAll('.touch-button').forEach(btn => btn.addEventListener('contextmenu', e=>e.preventDefault()));
 
-// Initial animation on start screen (demo)
+// ---------------- Start screen demo ----------------
 let demoTimer = 0;
 function demoAnimation(){
   if(!running){
     demoTimer++;
     if(demoTimer > 90 && Math.random() < 0.12){
-      if(Math.random() < 0.5) spawnZombie();
-      else spawnBat();
+      if(Math.random() < 0.5) spawnZombie(); else spawnBat();
       demoTimer = 0;
     }
-
-    // Update demo entities
+    // update demo entities
     for(let i=entities.length-1;i>=0;i--){
       const e = entities[i];
       e.x += e.vx;
-      if(e.wobble !== undefined) {
-        e.wobble += 0.15;
-        e.y += Math.sin(e.wobble) * 1.5;
-      }
-      if(e.x < -100) entities.splice(i,1);
+      if(e.wobble !== undefined){ e.wobble += 0.15; e.y += Math.sin(e.wobble)*1.5; }
+      if(e.x < -120) entities.splice(i,1);
     }
-
     draw();
     requestAnimationFrame(demoAnimation);
   }
 }
-
 demoAnimation();
 
-console.log('🦆 Bebek Manyun vs Zombi - Game loaded successfully!');
-console.log('High Score:', highScore);
+// start button
+startBtn.addEventListener('click', ()=>{ startGame(); });
 
+// pause toggle
+function togglePause(){ if(!running) return; paused = !paused; if(!paused) requestAnimationFrame(loop); }
+
+console.log('🦆 Bebek Manyun vs Zombi (fixed) loaded');
 </script>
 </body>
 </html>
