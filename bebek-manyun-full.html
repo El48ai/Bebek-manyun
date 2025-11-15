@@ -28,6 +28,7 @@
     .hp-bar{width:150px;height:12px;background:#334155;border-radius:6px;overflow:hidden;margin-top:6px}
     .hp-fill{height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);transition:width 0.3s}
     .particle{position:absolute;pointer-events:none}
+    #muteBtn{margin-left:8px;padding:6px 10px;font-size:12px;border-radius:8px}
     @media (max-width:768px){
       .controls{display:none}
       #gameWrap{height:500px}
@@ -48,6 +49,9 @@
     <div class="controls">
       <small>Kontrol: ← → / A D — Lompat: ↑ / W — Serang: Space</small>
       <small style="margin-top:4px">Tekan ESC untuk pause</small>
+      <div style="margin-top:6px">
+        <button id="muteBtn" class="btn" style="padding:6px 10px;font-size:12px">🔊</button>
+      </div>
     </div>
     <div id="overlayStart" class="centerOverlay">
       <h1 style="margin:0">🦆 Bebek Manyun vs Zombi 🧟</h1>
@@ -66,7 +70,7 @@
 
 <script>
 // ======= Full 2D canvas game: Bebek Manyun vs Zombi ======
-// Enhanced, fixed and optimized copy (paste into your file)
+// Fixed + sound + mute + performance guard
 
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
@@ -80,6 +84,7 @@ const hpEl = document.getElementById('hp');
 const hpBar = document.getElementById('hpBar');
 const waveEl = document.getElementById('wave');
 const touchControls = document.getElementById('touchControls');
+const muteBtn = document.getElementById('muteBtn');
 
 let running = false;
 let paused = false;
@@ -108,6 +113,92 @@ const player = {
 const GRAV = 0.6;
 const FRICTION = 0.88;
 
+//
+// --- Simple sound system (Web Audio API) ---
+//
+let audioCtx = null;
+let masterGain = null;
+let muted = false;
+
+function initAudio(){
+  if(audioCtx) return;
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  masterGain = audioCtx.createGain();
+  masterGain.gain.value = 0.9;
+  masterGain.connect(audioCtx.destination);
+}
+
+function playOsc({type='sine', freq=440, dur=0.12, vol=0.5, pan=0} = {}){
+  if(!audioCtx || muted) return;
+  const o = audioCtx.createOscillator();
+  const g = audioCtx.createGain();
+  const p = audioCtx.createStereoPanner ? audioCtx.createStereoPanner() : null;
+  o.type = type;
+  o.frequency.value = freq;
+  g.gain.value = 0;
+  o.connect(g);
+  if(p){ g.connect(p); p.connect(masterGain); p.pan.value = pan; }
+  else { g.connect(masterGain); }
+  const now = audioCtx.currentTime;
+  g.gain.cancelScheduledValues(now);
+  g.gain.setValueAtTime(0, now);
+  g.gain.linearRampToValueAtTime(vol, now + 0.01);
+  g.gain.exponentialRampToValueAtTime(0.001, now + dur);
+  o.start(now);
+  o.stop(now + dur + 0.02);
+}
+
+function playNoise({dur=0.08, vol=0.6, pan=0} = {}){
+  if(!audioCtx || muted) return;
+  const bufferSize = Math.floor(audioCtx.sampleRate * dur);
+  const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for(let i=0;i<bufferSize;i++) data[i] = (Math.random()*2-1) * Math.exp(-i / (bufferSize*0.8));
+  const src = audioCtx.createBufferSource();
+  src.buffer = buffer;
+  const g = audioCtx.createGain();
+  g.gain.value = vol;
+  src.connect(g);
+  g.connect(masterGain);
+  src.start();
+}
+
+function playSound(name){
+  if(!audioCtx || muted) return;
+  switch(name){
+    case 'quack':
+      playOsc({type:'square', freq:600, dur:0.08, vol:0.18});
+      playOsc({type:'sine', freq:900, dur:0.12, vol:0.08});
+      break;
+    case 'shoot':
+      playOsc({type:'sawtooth', freq:320, dur:0.06, vol:0.12});
+      playNoise({dur:0.04, vol:0.06});
+      break;
+    case 'hit':
+      playOsc({type:'sine', freq:120, dur:0.18, vol:0.25});
+      playNoise({dur:0.06, vol:0.08});
+      break;
+    case 'enemyDie':
+      playOsc({type:'triangle', freq:200, dur:0.22, vol:0.22});
+      playOsc({type:'sine', freq:380, dur:0.18, vol:0.12});
+      break;
+    case 'gameOver':
+      playOsc({type:'square', freq:90, dur:0.6, vol:0.28});
+      break;
+    default:
+      break;
+  }
+}
+
+muteBtn.addEventListener('click', ()=>{
+  muted = !muted;
+  muteBtn.textContent = muted ? '🔇' : '🔊';
+  if(masterGain) masterGain.gain.value = muted ? 0 : 0.9;
+});
+
+//
+// Game logic
+//
 function rand(min, max){return Math.random()*(max-min)+min}
 
 function spawnZombie(){
@@ -119,7 +210,6 @@ function spawnZombie(){
     vx: rand(-1.6, -1.0) - Math.min(0.8, score/400),
     hp: 20 + Math.floor(score/40) + wave * 5,
     maxHp: 20 + Math.floor(score/40) + wave * 5,
-    speedBase: 1.2,
     attackTimer: 0
   };
   entities.push(z);
@@ -152,6 +242,7 @@ function shoot(){
   };
   entities.push(p);
   createParticles(p.x, p.y, 3, '#8be0ff');
+  playSound('quack');
 }
 
 function createParticles(x, y, count, color){
@@ -167,7 +258,6 @@ function createParticles(x, y, count, color){
       size: rand(3, 8)
     });
   }
-  // Batasi total particles agar tidak overload
   if(particles.length > MAX_PARTICLES) {
     particles.splice(0, particles.length - MAX_PARTICLES);
   }
@@ -240,6 +330,7 @@ function update(){
         player.invulnerable = 30;
         e.attackTimer = 0;
         createParticles(player.x + player.w/2, player.y + player.h/2, 5, '#ff4444');
+        playSound('hit');
       }
 
       if(e.x + e.w < -40) entities.splice(i,1);
@@ -256,6 +347,7 @@ function update(){
         player.hp -= 3;
         player.invulnerable = 25;
         createParticles(player.x + player.w/2, player.y + player.h/2, 4, '#ff4444');
+        playSound('hit');
       }
 
       if(e.x + e.w < -40) entities.splice(i,1);
@@ -295,6 +387,7 @@ function update(){
       const points = (e.type==='zombie') ? 30 : 15;
       score += points;
       createParticles(e.x + e.w/2, e.y + e.h/2, 12, '#ffd54a');
+      playSound('enemyDie');
       entities.splice(i,1);
     }
   }
@@ -311,6 +404,7 @@ function update(){
 
   // Lose condition
   if(player.hp <= 0){
+    playSound('gameOver');
     endGame();
   }
 
@@ -513,6 +607,9 @@ function loop(){
 }
 
 function startGame(){
+  initAudio();
+  if(audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+
   running = true;
   paused = false;
   score = 0;
@@ -599,11 +696,7 @@ function resizeCanvas(){
   canvas.style.transform = `scale(${scale})`;
   canvas.style.transformOrigin = 'center center';
 
-  // Jika kamu ingin komputasi fisika mengikuti ukuran tampilan,
-  // update W/H/GROUND_Y. Sekarang kita tetap gunakan koordinat desain (900x600)
-  // tetapi update GROUND_Y agar hitbox tetap sesuai visual transform.
-  // Perhitungan: ground berada pada posisi relatif 600 - 80 = 520 di desain.
-  // Skala visual:
+  // Keep logical coordinates stable (900x600), but ensure GROUND_Y stays consistent:
   W = 900;
   H = 600;
   GROUND_Y = H - 80;
